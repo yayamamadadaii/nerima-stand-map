@@ -19,3 +19,11 @@ for theme in ('simple',):
     (docs / theme).mkdir(exist_ok=True)
     (docs / theme / 'index.html').write_text(s, encoding='utf-8')
 print('version', v)
+
+# MapLibre 版の試作（next/）も同じ版番号にそろえる
+nxt = docs / 'next' / 'index.html'
+if nxt.exists():
+    s = nxt.read_text(encoding='utf-8')
+    s = re.sub(r'((?:\.\./)?(?:style|themes|common|layers|roads)\.(?:css|js)|map\.js)\?v=[^"]*', rf'\1?v={v}', s)
+    s = re.sub(r'window\.APP_V = "[^"]*";', f'window.APP_V = "{v}";', s)
+    nxt.write_text(s, encoding='utf-8')

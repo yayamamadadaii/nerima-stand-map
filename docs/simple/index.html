@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#2C2C2E" media="(prefers-color-scheme: dark)">
 <title>大泉学園無人販売所</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script>window.APP_V = "202610222227"; window.APP_BASE = "../"; window.APP_THEME = "simple";</script>
+<script>window.APP_V = "202610222300"; window.APP_BASE = "../"; window.APP_THEME = "simple";</script>
 <script>
   // GitHub Pages はページを最大10分スマホに残すので、新しい版が出ていたら1回だけ読み直す
   fetch((window.APP_BASE || '') + 'version.txt?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(v => {
@@ -18,12 +18,12 @@
     location.reload();
   }).catch(() => {});
 </script>
-<link rel="stylesheet" href="../style.css?v=202610222227">
+<link rel="stylesheet" href="../style.css?v=202610222300">
 <script>
   // 普段はファミコン本体風。simple/ のページか ?theme=simple のときだけシンプルな見た目
   if ((window.APP_THEME || new URLSearchParams(location.search).get('theme') || 'fami') === 'fami') document.documentElement.classList.add('retro', 't-fami');
 </script>
-<link rel="stylesheet" href="../themes.css?v=202610222227">
+<link rel="stylesheet" href="../themes.css?v=202610222300">
 <style>
   .leaflet-container { font-family: var(--font); background: var(--map-land); }
   .lbl { transform: translate(-50%, -50%); }
@@ -54,10 +54,10 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="../themes.js?v=202610222227"></script>
-<script src="../common.js?v=202610222227"></script>
-<script src="../roads.js?v=202610222227"></script>
-<script src="../layers.js?v=202610222227"></script>
+<script src="../themes.js?v=202610222300"></script>
+<script src="../common.js?v=202610222300"></script>
+<script src="../roads.js?v=202610222300"></script>
+<script src="../layers.js?v=202610222300"></script>
 <script>
 // Leaflet で真上から見た平らな地図を描く。軽さ優先
 (() => {
@@ -164,10 +164,18 @@
   };
   // 文字が販売所のピンや駅名に重ならないよう、それらの場所を渡す
   // 自分のキャラの上にも文字を置かない
-  const occupied = () => [...[...pinMarkers.values()].filter(m => map.hasLayer(m)).map(m => m.getLatLng()), ...stations,
-    ...(meMarker && map.hasLayer(meMarker) ? [meMarker.getLatLng()] : [])];
+  const occupied = () => [...[...pinMarkers.values()].filter(m => map.hasLayer(m)).map(m => m.getLatLng()),
+    ...stations.map(p => ({ lat: p[0], lng: p[1] })), ...(meMarker && map.hasLayer(meMarker) ? [meMarker.getLatLng()] : [])];
+  // layers.js に渡す、Leaflet での文字の置き方
+  const view = {
+    zoom: () => map.getZoom(),
+    inView: (lat, lng) => map.getBounds().pad(0.1).contains([lat, lng]),
+    project: (lat, lng) => map.latLngToContainerPoint([lat, lng]),
+    addLabel: (el, lat, lng) => L.marker([lat, lng], { pane: 'labels', interactive: false, keyboard: false, icon: L.divIcon({ className: '', html: el, iconSize: [0, 0] }) }).addTo(map),
+    onMoveEnd: (fn) => map.on('moveend zoomend', fn)
+  };
   StandApp.start(adapter).then(async () => {
-    layers = await MapLayers.attach(map, { occupied });
+    layers = await MapLayers.attach(view, { occupied });
     await SmallRoads.attach(map, { onRestyle: (fn) => { roadsRestyle = fn; } });
   });
 })();

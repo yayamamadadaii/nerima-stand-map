@@ -47,6 +47,9 @@
 - 理由: Leaflet はピンチの拡大・縮小がカクつき、挙動もおかしい（だいき指摘）。スワイプは慣性の調整でよくなった
 - 今の見た目（色・ドット絵・キャラ・文字・細い道・レイヤー）は保つ。真上から見る（傾けない）
 - 載せ替えの前の Leaflet 版はタグ `v1-leaflet` で残す
+- 試作は `docs/next/`（https://yayamamadadaii.github.io/nerima-stand-map/next/ ）。`next/map.js` が MapLibre での描画、ほかの JS/CSS は本体と共通
+  - ズームの数字は Leaflet 版に合わせてある（MapLibre のズーム + 1 = Leaflet のズーム）。`layers.js` の表示し始めるズームなどはそのまま使える
+  - だいきが実機で OK を出したら、`next/` を本体（`docs/index.html`）に入れ替え、Leaflet 用の `roads.js` と index.html 内の Leaflet のコードを消す
 
 ## 見た目の決まりごと（このアプリだけの例外・追加）
 

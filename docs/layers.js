@@ -1,5 +1,6 @@
 // 地図の情報レイヤー（目印・道路名・丁目と番地）。表示・非表示を切り替えられる。
 // 文字が重ならないよう、優先度の高いものから置き、重なるものは出さない。
+// 地図ライブラリには依らない。view = { zoom(), inView(lat, lng), project(lat, lng) → {x, y}, addLabel(el, lat, lng) → { remove() }, onMoveEnd(fn) }
 window.MapLayers = (() => {
   const KEY = 'layers';
   const GROUPS = [
@@ -17,7 +18,7 @@ window.MapLayers = (() => {
   };
   const svg = (name, cls) => `<svg class="icon ${cls || ''}" viewBox="0 0 24 24">${ICONS[name]}</svg>`;
 
-  async function attach(map, opts) {
+  async function attach(view, opts) {
     let on = { poi: true, road: true, addr: true };
     try { on = { ...on, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch (e) {}
 
@@ -57,12 +58,12 @@ window.MapLayers = (() => {
     });
     L0.blocks.forEach(([lat, lng, t], i) => items.push({ id: 'b' + i, g: 'addr', lat, lng, text: t, cls: 'lbl-blk', z: 17.5, prio: 9 }));
 
-    const live = new Map();   // id -> marker
-    function makeMarker(it) {
+    const live = new Map();   // id -> 置いた文字
+    function makeLabel(it) {
       const div = document.createElement('div');
       div.className = 'lbl2 ' + it.cls;
       div.textContent = it.text;
-      return L.marker([it.lat, it.lng], { pane: 'labels', interactive: false, keyboard: false, icon: L.divIcon({ className: '', html: div, iconSize: [0, 0] }) });
+      return view.addLabel(div, it.lat, it.lng);
     }
     // 文字の大きさの見積もり（12px の日本語 ≒ 1文字12px）
     function box(it, pt) {
@@ -73,19 +74,19 @@ window.MapLayers = (() => {
     const hit = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
 
     function draw() {
-      const z = map.getZoom(), bounds = map.getBounds().pad(0.1);
-      const placed = opts.occupied().map(p => { const c = map.latLngToContainerPoint(p); return [c.x - 18, c.y - 18, c.x + 18, c.y + 18]; });
+      const z = view.zoom();
+      const placed = opts.occupied().map(p => { const c = view.project(p.lat, p.lng); return [c.x - 18, c.y - 18, c.x + 18, c.y + 18]; });
       const want = new Set();
-      const cands = items.filter(it => on[it.g] && z >= it.z && bounds.contains([it.lat, it.lng])).sort((a, b) => a.prio - b.prio);
+      const cands = items.filter(it => on[it.g] && z >= it.z && view.inView(it.lat, it.lng)).sort((a, b) => a.prio - b.prio);
       for (const it of cands) {
-        const b = box(it, map.latLngToContainerPoint([it.lat, it.lng]));
+        const b = box(it, view.project(it.lat, it.lng));
         if (placed.some(p => hit(p, b))) continue;
         placed.push(b); want.add(it.id);
       }
       for (const [id, m] of live) if (!want.has(id)) { m.remove(); live.delete(id); }
-      for (const it of cands) if (want.has(it.id) && !live.has(it.id)) live.set(it.id, makeMarker(it).addTo(map));
+      for (const it of cands) if (want.has(it.id) && !live.has(it.id)) live.set(it.id, makeLabel(it));
     }
-    map.on('moveend zoomend', draw);
+    view.onMoveEnd(draw);
     draw();
     return { redraw: draw };
   }
