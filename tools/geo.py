@@ -1,3 +1,5 @@
+# 区のガイドから読み取った一覧（data/stands-guide2025.tsv）の住所を、国土地理院の住所検索で緯度経度にする
+# usage: python3 geo.py data/stands-guide2025.tsv stands.json
 import json, sys, time, urllib.parse, urllib.request
 rows = []
 for line in open(sys.argv[1], encoding='utf-8'):

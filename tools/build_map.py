@@ -1,6 +1,11 @@
+# 地図データ（道路・線路・川・公園・畑・大泉5町の境界・駅）と販売所を docs/data/mapdata.json にまとめる
+# usage: python3 build_map.py <osm_features.json> <osm_town_boundaries.json> <stands.json（geo.py の出力）> <out.json>
+#   osm_features: Overpass で bbox 35.730,139.558,35.782,139.616 の道路・線路・水・公園・畑・駅を out geom で取ったもの
+#   osm_town_boundaries: 大泉学園町・東大泉・西大泉・南大泉・大泉町（と西大泉町）の境界リレーションを out geom で取ったもの
 import json, sys, math
-feat = json.load(open('ab/feat.json'))
-bnd = json.load(open('ab/bndg.json'))
+feat_path, bnd_path, stands_path, out_path = sys.argv[1:5]
+feat = json.load(open(feat_path))
+bnd = json.load(open(bnd_path))
 Q = 1e5
 def q(p): return [round(p['lat']*Q)/Q, round(p['lon']*Q)/Q]
 
@@ -69,9 +74,9 @@ for e in bnd['elements']:
     towns.append({'name': e['tags']['name'], 'rings': rs, 'c': [round(lat,5), round(lng,5)]})
 out['towns'] = towns
 out['stations'] = stations
-S = [r for r in json.load(open('stands.json')) if '大泉' in r['address']]
+S = [r for r in json.load(open(stands_path)) if '大泉' in r['address']]
 out['stands'] = [{'no': r['no'], 'name': r['name'], 'address': r['address'], 'lat': r['lat'], 'lng': r['lng'],
                   'items': r['items'], 'unmanned': r['unmanned'], 'note': r['note'] + ('（位置は丁目単位のおおよそ）' if r['no']==66 else '')} for r in S]
 s = json.dumps(out, ensure_ascii=False, separators=(',',':'))
-open('mapdata.json','w',encoding='utf-8').write(s)
+open(out_path,'w',encoding='utf-8').write(s)
 print(len(s), {k: len(v) for k, v in out.items()}, [ (t['name'], len(t['rings'])) for t in towns], stations)
