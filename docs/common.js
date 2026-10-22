@@ -4,6 +4,7 @@ window.StandApp = (() => {
   const NEAR_M = 60;          // この距離まで近づいたら「すぐ近く」を出す
   const $ = (id) => document.getElementById(id);
   const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const T = window.Theme;   // ファミコン風の試作（themes.js）。null なら通常の見た目
 
   const ICONS = {
     veg: '<path d="M2.27 21.7s9.87-3.5 12.73-6.36a4.5 4.5 0 0 0-6.36-6.37C5.77 11.84 2.27 21.7 2.27 21.7zM8.64 14l-2.05-2.04M15.34 15l-2.46-2.46"/><path d="M22 9s-1.33-2-3.5-2C16.86 7 15 9 15 9s1.33 2 3.5 2S22 9 22 9z"/><path d="M15 2s-2 1.33-2 3.5S15 9 15 9s2-1.84 2-3.5C17 3.33 15 2 15 2z"/>',
@@ -78,7 +79,7 @@ window.StandApp = (() => {
     // ピン
     const pins = new Map();
     for (const s of stands) {
-      const p = el('div', { class: 'pin' + (s.unmanned ? '' : ' other'), role: 'button', 'aria-label': s.name }, icon(s.kind));
+      const p = el('div', { class: 'pin' + (s.unmanned ? '' : ' other'), role: 'button', 'aria-label': s.name }, T ? T.pin(s) : icon(s.kind));
       p.addEventListener('click', (e) => { e.stopPropagation(); openDetail(s.no); });
       pins.set(s.no, p);
     }
@@ -92,7 +93,7 @@ window.StandApp = (() => {
     }
 
     // 自分のマーカー
-    const meEl = el('div', { class: 'me' }, el('div', { class: 'me-ring' }), el('div', { class: 'me-cone', hidden: true }), el('div', { class: 'me-dot' }));
+    const meEl = T ? T.me() : el('div', { class: 'me' }, el('div', { class: 'me-ring' }), el('div', { class: 'me-cone', hidden: true }), el('div', { class: 'me-dot' }));
     const cone = meEl.querySelector('.me-cone');
 
     await adapter.init({ D, towns, stands, pins, meEl, css, onMapClick: closeSheet, onUserMove: () => setFollow(false) });
@@ -149,7 +150,7 @@ window.StandApp = (() => {
         el('div', { class: 'stack', style: 'gap:4px' },
           el('div', { class: 'sub' }, '主な品目（時期によって変わります）'),
           el('div', { class: 'tags' }, s.items.map(i => el('span', { class: 'tag tag-plain' }, i)))),
-        el('a', { class: 'btn btn-primary', href: routeUrl(s), target: '_blank', rel: 'noopener' }, icon('nav'), 'Googleマップで経路を見る'),
+        el('a', { class: 'btn btn-primary', href: routeUrl(s), target: '_blank', rel: 'noopener' }, icon('nav'), T ? T.routeLabel : 'Googleマップで経路を見る'),
         el('div', { class: 'sub' }, '情報は2025年11月発行の区のガイドより。開いていないこともあります。'));
     }
     function openList() {
@@ -159,7 +160,7 @@ window.StandApp = (() => {
         head(`${rows.length} か所`, st.me && inArea(st.me) ? '今いる場所から近い順' : '地図の中心から近い順'),
         el('div', { class: 'list' }, rows.map(({ s, d }) =>
           el('button', { class: 'row', type: 'button', onclick: () => { setFollow(false); adapter.flyTo(s); openDetail(s.no); } },
-            el('span', { class: 'row-icon' + (s.unmanned ? '' : ' other') }, icon(s.kind)),
+            el('span', { class: 'row-icon' + (s.unmanned ? '' : ' other') }, T ? T.icon(s) : icon(s.kind)),
             el('span', { class: 'row-main' },
               el('div', { class: 'row-title' }, s.name),
               el('div', { class: 'row-sub' }, `${s.address.replace('練馬区', '')}　${s.items.slice(0, 4).join('・')}`)),
@@ -182,7 +183,10 @@ window.StandApp = (() => {
       locBtn.setAttribute('aria-pressed', on);
       if (on && st.me && inArea(st.me)) adapter.follow(st.me, st.heading);
     }
+    let walkTimer;
     function updateMe(p) {
+      // 動いている間だけ自キャラの足踏みをする
+      if (st.me && distM(st.me, p) > 1) { meEl.classList.add('walking'); clearTimeout(walkTimer); walkTimer = setTimeout(() => meEl.classList.remove('walking'), 2500); }
       st.me = p;
       adapter.setMe(p);
       if (!inArea(p)) {
@@ -269,8 +273,8 @@ window.StandApp = (() => {
       if (no !== st.nearNo) { st.nearNo = no; renderPins(); if (no && navigator.vibrate) navigator.vibrate(30); }
       if (!best || st.sheet) { card.hidden = true; return; }
       card.replaceChildren(
-        el('span', { class: 'row-icon' + (best.s.unmanned ? '' : ' other') }, icon(best.s.kind)),
-        el('div', {}, el('div', { class: 'eyebrow' }, 'すぐ近くに販売所'), el('div', { class: 'title' }, best.s.name)),
+        el('span', { class: 'row-icon' + (best.s.unmanned ? '' : ' other') }, T ? T.icon(best.s) : icon(best.s.kind)),
+        el('div', {}, el('div', { class: 'eyebrow' }, T ? T.nearEyebrow(best.s) : 'すぐ近くに販売所'), el('div', { class: 'title' }, best.s.name)),
         el('span', { class: 'near-dist' }, fmtDist(best.d)));
       card.onclick = () => openDetail(best.s.no);
       card.hidden = false;

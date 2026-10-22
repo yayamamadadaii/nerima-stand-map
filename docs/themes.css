@@ -1,0 +1,98 @@
+/* ファミコン風の見た目（試作）。html.t-rpg = A「RPG風」、html.t-fami = B「ファミコン本体風」
+   このアプリだけの例外（だいき判断: 遊んでよい。ただし使いやすさと軽さが最優先）。
+   どちらも OS のライト/ダークには追従しない（ゲーム画面として1つの見た目に決める） */
+
+/* ---------- 共通 ---------- */
+html.retro {
+  --font: "DotGothic16", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --radius-card: 6px; --radius-control: 4px; --radius-small: 2px;
+  --fs-caption: 12px; --fs-small: 14px; --fs-body: 16px; --fs-h3: 18px; --fs-h2: 20px;
+}
+html.retro body, html.retro button, html.retro .leaflet-container { font-family: var(--font); letter-spacing: 0.02em; }
+html.retro * { font-weight: 400 !important; }        /* ドットの字は太字にすると崩れる */
+html.retro .leaflet-pane canvas { image-rendering: pixelated; }
+html.retro .px { display: block; image-rendering: pixelated; }
+
+/* 販売所のピン = ドット絵そのもの */
+html.retro .pin {
+  width: 36px; height: 36px; border: 0; border-radius: 0; background: transparent;
+  transition: transform var(--motion-fast) steps(2);
+}
+html.retro .pin.other { background: transparent; }
+html.retro .pin.sel { transform: scale(1.4); background: transparent; }
+html.retro .pin.near:not(.sel) { animation: px-bob 0.6s steps(2) infinite; }
+html.retro .pin { position: relative; }
+html.retro .pin.near::after {
+  content: "!"; position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
+  font-size: 16px; line-height: 16px; padding: 1px 5px; color: var(--text); background: var(--surface);
+  border: 2px solid var(--line);
+}
+@keyframes px-bob { 50% { transform: translateY(-3px); } }
+
+/* 自キャラ: 2コマで足踏み */
+html.retro .me-px .hero { position: absolute; left: -15px; top: -24px; }
+html.retro .me-px .hero .px:last-child { display: none; }
+html.retro .me-px.walking .hero .px:first-child { animation: px-a 0.5s steps(1) infinite; }
+html.retro .me-px.walking .hero .px:last-child { display: block; position: absolute; top: 0; animation: px-b 0.5s steps(1) infinite; }
+@keyframes px-a { 50% { visibility: hidden; } }
+@keyframes px-b { 0% { visibility: hidden; } 50% { visibility: visible; } }
+html.retro .me-px .me-cone { top: -52px; }
+
+html.retro .row-icon .px, html.retro .near-card .px { width: 28px; height: auto; }
+html.retro .btn:active { transform: translate(1px, 1px); }
+html.retro .btn-primary .icon { display: none; }
+html.retro .btn-primary::before { content: "▶"; }
+html.retro .seg button[aria-pressed="true"]::before { content: "▶ "; }
+
+/* ---------- A: RPG風（黒いウィンドウ＋白い枠） ---------- */
+html.t-rpg {
+  --bg: #000000; --surface: #000000; --line: #FCFCFC; --text: #FCFCFC; --text-sub: #BCBCBC;
+  --accent: #000000; --accent-text: #FCA044; --accent-soft: rgba(252, 160, 68, 0.2);
+  --danger: #F83800; --success: #58D854;
+  --map-land: #B8F8B8; --map-farm: #58D854; --map-park: #00A844; --map-water: #3CBCFC;
+  --map-road: #FCE0A8; --map-road-casing: #C84C0C; --map-road-major-casing: #AC7C00;
+  --map-rail: #000000; --map-border: #000000;
+  color-scheme: dark;
+}
+html.t-rpg .top, html.t-rpg .sheet, html.t-rpg .near-card, html.t-rpg .layer-panel, html.t-rpg .banner {
+  border: 3px solid var(--line); border-radius: var(--radius-card); background: var(--surface);
+}
+html.t-rpg .top { margin: 8px 8px 0; }
+html.t-rpg .sheet { margin: 0 8px 8px; }
+html.t-rpg .layer-panel { box-shadow: none; }
+html.t-rpg .seg { background: transparent; border: 0; }
+html.t-rpg .seg button { color: var(--text-sub); }
+html.t-rpg .seg button[aria-pressed="true"] { background: transparent; color: var(--text); }
+html.t-rpg .btn-secondary, html.t-rpg .close { background: #000; color: #FCFCFC; border: 2px solid #FCFCFC; }
+html.t-rpg .btn-primary { background: #000; color: #FCFCFC; border: 3px solid #FCFCFC; }
+html.t-rpg .btn-round[aria-pressed="true"] { color: var(--accent-text); border-color: var(--accent-text); }
+html.t-rpg .tag { background: transparent; border: 1px solid var(--accent-text); }
+html.t-rpg .tag-plain { color: var(--text); border-color: var(--text-sub); }
+html.t-rpg .near-dist, html.t-rpg .near-card .eyebrow { color: var(--accent-text); }
+html.t-rpg .lbl, html.t-rpg .lbl-poi, html.t-rpg .lbl-road { background: #000; color: #FCFCFC; border: 2px solid #FCFCFC; }
+html.t-rpg .lbl-town, html.t-rpg .lbl-chome, html.t-rpg .lbl-blk { color: #000; background: transparent; border: 0; }
+html.t-rpg .credit { background: #000; color: #BCBCBC; border-color: #FCFCFC; }
+html.t-rpg .toggle input { background: #444; }
+html.t-rpg .toggle input:checked { background: var(--accent-text); }
+
+/* ---------- B: ファミコン本体風（えんじ色とクリーム色） ---------- */
+html.t-fami {
+  --bg: #F4EEDC; --surface: #FFFDF5; --line: #A51C1C; --text: #2B1B12; --text-sub: #6B5A4A;
+  --accent: #A51C1C; --accent-text: #A51C1C; --accent-soft: rgba(165, 28, 28, 0.1);
+  --map-land: #EFE6D2; --map-farm: #D6DDA8; --map-park: #C3D99B; --map-water: #9CC4E4;
+  --map-road: #FFFDF5; --map-road-casing: #CDBB98; --map-road-major-casing: #B39B70;
+  --map-rail: #5A4A3A; --map-border: #A51C1C;
+  color-scheme: light;
+}
+html.t-fami .top { background: #A51C1C; border-bottom: 4px solid #D4A017; }
+html.t-fami .top h1 { color: #FFFDF5; }
+html.t-fami .top .btn-secondary { background: #FFFDF5; border-color: #FFFDF5; color: #A51C1C; }
+html.t-fami .seg { background: #7A1212; }
+html.t-fami .seg button { color: #F4D9A0; }
+html.t-fami .seg button[aria-pressed="true"] { background: #FFFDF5; color: #A51C1C; }
+html.t-fami .seg .num { color: inherit; }
+html.t-fami .sheet, html.t-fami .near-card, html.t-fami .layer-panel, html.t-fami .banner { border: 3px solid var(--line); }
+html.t-fami .layer-panel { box-shadow: none; }
+html.t-fami .btn-secondary { border: 2px solid var(--line); color: var(--line); }
+html.t-fami .btn-primary { background: #A51C1C; border: 2px solid #7A1212; }
+html.t-fami .lbl, html.t-fami .lbl-poi, html.t-fami .lbl-road { border: 1px solid #CDBB98; }
