@@ -96,7 +96,7 @@ window.StandApp = (() => {
     const meEl = T ? T.me() : el('div', { class: 'me' }, el('div', { class: 'me-ring' }), el('div', { class: 'me-cone', hidden: true }), el('div', { class: 'me-dot' }));
     const cone = meEl.querySelector('.me-cone');
 
-    await adapter.init({ D, towns, stands, pins, meEl, css, onMapClick: closeSheet, onUserMove: () => setFollow(false) });
+    await adapter.init({ D, towns, stands, pins, meEl, css, onMapClick: closeSheet, onUserMove: () => pauseFollow() });
 
     // ---------- 見出し ----------
     $('listBtn').replaceChildren(icon('list', 'icon-sm'), '一覧');
@@ -145,7 +145,7 @@ window.StandApp = (() => {
       showSheet('list',
         head(`${rows.length} か所`, st.me && inArea(st.me) ? '今いる場所から近い順' : '地図の中心から近い順'),
         el('div', { class: 'list' }, rows.map(({ s, d }) =>
-          el('button', { class: 'row', type: 'button', onclick: () => { setFollow(false); adapter.flyTo(s); openDetail(s.no); } },
+          el('button', { class: 'row', type: 'button', onclick: () => { pauseFollow(); adapter.flyTo(s); openDetail(s.no); } },
             el('span', { class: 'row-icon' + (s.unmanned ? '' : ' other') }, T ? T.icon(s) : icon(s.kind)),
             el('span', { class: 'row-main' },
               el('div', { class: 'row-title' }, s.name),
@@ -166,20 +166,32 @@ window.StandApp = (() => {
     }
     function setFollow(on) {
       st.follow = on;
+      clearTimeout(resumeTimer);
       locBtn.setAttribute('aria-pressed', on);
       if (on && st.me && inArea(st.me)) adapter.follow(st.me, st.heading);
+    }
+    // 指で地図を動かしたら追いかけるのをやめるが、15秒さわらなければまた自分を追いかける
+    const RESUME_MS = 15000;
+    let resumeTimer;
+    function pauseFollow() {
+      if (st.follow) { st.follow = false; locBtn.setAttribute('aria-pressed', 'false'); }
+      clearTimeout(resumeTimer);
+      if (st.watching) resumeTimer = setTimeout(() => { if (st.me && inArea(st.me) && st.sheet == null) setFollow(true); }, RESUME_MS);
     }
     let walkTimer;
     function updateMe(p) {
       // 動いている間だけ自キャラの足踏みをする
       if (st.me && distM(st.me, p) > 1) { meEl.classList.add('walking'); clearTimeout(walkTimer); walkTimer = setTimeout(() => meEl.classList.remove('walking'), 2500); }
+      const wasIn = st.me && inArea(st.me);
       st.me = p;
       adapter.setMe(p);
       if (!inArea(p)) {
         const c = adapter.areaCenter();
         banner(`今いる場所は大泉5町の外です（中心まで ${fmtDist(distM(p, c))}）`);
       } else banner('');
-      if (st.follow && inArea(p)) adapter.follow(p, st.heading);
+      // 大泉5町の外から中に入ってきたら（最初の位置も含む）、追いかけを始める
+      if (!wasIn && inArea(p) && !st.follow) setFollow(true);
+      else if (st.follow && inArea(p)) adapter.follow(p, st.heading);
       checkNear();
     }
     function startWatch() {
@@ -191,9 +203,7 @@ window.StandApp = (() => {
         (pos) => {
           const p = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy };
           if (st.heading == null && pos.coords.heading != null && !isNaN(pos.coords.heading) && pos.coords.speed > 0.5) setHeading(pos.coords.heading, true);
-          const first = !st.me;
           updateMe(p);
-          if (first && inArea(p)) setFollow(true);
         },
         (err) => {
           st.watching = false;

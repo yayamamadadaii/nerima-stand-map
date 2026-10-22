@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#2C2C2E" media="(prefers-color-scheme: dark)">
 <title>大泉学園無人販売所</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script>window.APP_V = "202610221839"; window.APP_BASE = "../"; window.APP_THEME = "simple";</script>
+<script>window.APP_V = "202610222227"; window.APP_BASE = "../"; window.APP_THEME = "simple";</script>
 <script>
   // GitHub Pages はページを最大10分スマホに残すので、新しい版が出ていたら1回だけ読み直す
   fetch((window.APP_BASE || '') + 'version.txt?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(v => {
@@ -18,12 +18,12 @@
     location.reload();
   }).catch(() => {});
 </script>
-<link rel="stylesheet" href="../style.css?v=202610221839">
+<link rel="stylesheet" href="../style.css?v=202610222227">
 <script>
   // 普段はファミコン本体風。simple/ のページか ?theme=simple のときだけシンプルな見た目
   if ((window.APP_THEME || new URLSearchParams(location.search).get('theme') || 'fami') === 'fami') document.documentElement.classList.add('retro', 't-fami');
 </script>
-<link rel="stylesheet" href="../themes.css?v=202610221839">
+<link rel="stylesheet" href="../themes.css?v=202610222227">
 <style>
   .leaflet-container { font-family: var(--font); background: var(--map-land); }
   .lbl { transform: translate(-50%, -50%); }
@@ -54,10 +54,10 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="../themes.js?v=202610221839"></script>
-<script src="../common.js?v=202610221839"></script>
-<script src="../roads.js?v=202610221839"></script>
-<script src="../layers.js?v=202610221839"></script>
+<script src="../themes.js?v=202610222227"></script>
+<script src="../common.js?v=202610222227"></script>
+<script src="../roads.js?v=202610222227"></script>
+<script src="../layers.js?v=202610222227"></script>
 <script>
 // Leaflet で真上から見た平らな地図を描く。軽さ優先
 (() => {
@@ -70,11 +70,23 @@
       area = L.latLngBounds(
         [Math.min(...ring.map(p => p[0])), Math.min(...ring.map(p => p[1]))],
         [Math.max(...ring.map(p => p[0])), Math.max(...ring.map(p => p[1]))]);
-      map = L.map('map', { zoomControl: false, attributionControl: false, maxZoom: 19, zoomSnap: 0.25, zoomDelta: 0.5, maxBounds: area.pad(0.1), maxBoundsViscosity: 1 });
+      // 指を離したあとも少し滑る（慣性）。ピンチの後に決まった倍率へ吸い付かない（zoomSnap: 0）
+      map = L.map('map', {
+        zoomControl: false, attributionControl: false, maxZoom: 19, zoomSnap: 0, zoomDelta: 0.5,
+        inertia: true, inertiaDeceleration: 1800, inertiaMaxSpeed: 3000, easeLinearity: 0.25,
+        bounceAtZoomLimits: false, maxBounds: area.pad(0.1), maxBoundsViscosity: 0.7
+      });
       map.fitBounds(area, { padding: [8, 8] });
       map.setMinZoom(map.getZoom());
       map.on('click', onMapClick);
-      map.on('dragstart', onUserMove);
+      // 少し触れただけでは追いかけをやめない。40px 以上動かしたときだけ
+      let dragFrom;
+      map.on('dragstart', () => { dragFrom = map.getCenter(); });
+      map.on('drag', () => {
+        if (!dragFrom) return;
+        const moved = map.latLngToContainerPoint(dragFrom).distanceTo(map.getSize().divideBy(2));
+        if (moved > 40) { dragFrom = null; onUserMove(); }
+      });
 
       map.createPane('land').style.zIndex = 240;
       map.createPane('base').style.zIndex = 250;
@@ -134,7 +146,10 @@
       layers?.redraw();
     },
     setMe(p) { meMarker.setLatLng([p.lat, p.lng]); if (!map.hasLayer(meMarker)) meMarker.addTo(map); },
-    follow(p) { map.panTo([p.lat, p.lng], { animate: true, duration: 0.4 }); if (map.getZoom() < 16.5) map.setZoom(17); },
+    follow(p) {
+      if (map.getZoom() < 16.5) map.setView([p.lat, p.lng], 17, { animate: true });
+      else map.panTo([p.lat, p.lng], { animate: true, duration: 0.6, easeLinearity: 0.5 });
+    },
     setHeading() {},
     bearing() { return 0; },
     center() { const c = map.getCenter(); return { lat: c.lat, lng: c.lng }; },
