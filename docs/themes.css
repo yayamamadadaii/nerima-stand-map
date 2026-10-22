@@ -33,14 +33,15 @@ html.retro .legend .pin-dot.other { background: #9E1B22; }
 html.t-fami .tag { background: #3F8F3A; color: #FFFDF5; }
 html.t-fami .tag.tag-plain { background: #F4EEDC; color: #4A4038; }
 html.retro .pin.sel { transform: scale(1.4); background: transparent; }
-html.retro .pin.near:not(.sel) { animation: px-bob 0.6s steps(2) infinite; }
+/* 近づいたら「ぴょこっ」と跳ねる: 一度つぶれてから跳ぶ（だいき指定 2026-10-22） */
+html.retro .pin.near .pin-art .px { animation: px-hop 0.8s steps(1) infinite; transform-origin: 50% 100%; }
 html.retro .pin { position: relative; }
 html.retro .pin.near::after {
   content: "!"; position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
   font-size: 16px; line-height: 16px; padding: 1px 5px; color: var(--text); background: var(--surface);
   border: 2px solid var(--line);
 }
-@keyframes px-bob { 50% { transform: translateY(-3px); } }
+@keyframes px-hop { 0% { transform: none; } 25% { transform: scale(1.1, 0.85); } 50% { transform: translateY(-8px); } 75% { transform: none; } }
 
 /* 自キャラ: 2コマでいつも足踏み。歩いているときは速く（だいき指摘 2026-10-22: ひとまわり大きく、止まっていても足踏み） */
 html.retro .me-px .hero { position: absolute; left: -20px; top: -38px; }
