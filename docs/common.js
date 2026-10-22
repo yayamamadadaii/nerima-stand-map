@@ -72,8 +72,8 @@ window.StandApp = (() => {
       heading: null,       // 度。北=0
       follow: false, watching: false, nearNo: null
     };
-    try { const f = localStorage.getItem('filter'); if (f === 'all' || f === 'unmanned') st.filter = f; } catch (e) {}
-    const visible = (s) => st.filter === 'all' || s.unmanned;
+    try { const f = localStorage.getItem('filter'); if (f === 'manned' || f === 'unmanned') st.filter = f; } catch (e) {}
+    const visible = (s) => st.filter === 'unmanned' ? s.unmanned : !s.unmanned;
 
     // ピン
     const pins = new Map();
@@ -99,19 +99,19 @@ window.StandApp = (() => {
 
     // ---------- 見出し ----------
     $('nUnmanned').textContent = stands.filter(s => s.unmanned).length;
-    $('nAll').textContent = stands.length;
+    $('nManned').textContent = stands.filter(s => !s.unmanned).length;
     function setFilter(f) {
       st.filter = f;
       try { localStorage.setItem('filter', f); } catch (e) {}
       $('fUnmanned').setAttribute('aria-pressed', f === 'unmanned');
-      $('fAll').setAttribute('aria-pressed', f === 'all');
+      $('fManned').setAttribute('aria-pressed', f === 'manned');
       const sel = stands.find(s => s.no === st.selected);
       if (sel && !visible(sel)) closeSheet();
       renderPins(); checkNear();
       if (st.sheet === 'list') openList();
     }
     $('fUnmanned').onclick = () => setFilter('unmanned');
-    $('fAll').onclick = () => setFilter('all');
+    $('fManned').onclick = () => setFilter('manned');
     $('listBtn').replaceChildren(icon('list', 'icon-sm'), '一覧');
     $('listBtn').onclick = () => st.sheet === 'list' ? closeSheet() : openList();
 
