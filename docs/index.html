@@ -7,15 +7,15 @@
 <meta name="theme-color" content="#A51C1C">
 <title>大泉学園無人販売所</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script>window.APP_V = "202610221646";</script>
-<link rel="stylesheet" href="style.css?v=202610221646">
+<script>window.APP_V = "202610221652";</script>
+<link rel="stylesheet" href="style.css?v=202610221652">
 <script>
   // 普段はファミコン本体風。simple/ のページか ?theme=simple のときだけシンプルな見た目
-  if ((window.APP_THEME || new URLSearchParams(location.search).get('theme') || 'fami') === 'fami') document.documentElement.classList.add('retro', 't-fami');
+  if ((window.APP_THEME || new URLSearchParams(location.search).get('theme') || 'fami') === 'fami') document.documentElement.classList.add('retro', 't-fami', window.APP_COLOR || 'c0');
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap">
-<link rel="stylesheet" href="themes.css?v=202610221646">
+<link rel="stylesheet" href="themes.css?v=202610221652">
 <style>
   .leaflet-container { font-family: var(--font); background: var(--map-land); }
   .lbl { transform: translate(-50%, -50%); }
@@ -49,9 +49,9 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="themes.js?v=202610221646"></script>
-<script src="common.js?v=202610221646"></script>
-<script src="layers.js?v=202610221646"></script>
+<script src="themes.js?v=202610221652"></script>
+<script src="common.js?v=202610221652"></script>
+<script src="layers.js?v=202610221652"></script>
 <script>
 // Leaflet で真上から見た平らな地図を描く。軽さ優先
 (() => {
