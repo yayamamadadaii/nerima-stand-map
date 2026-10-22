@@ -1,15 +1,10 @@
 /* ファミコン本体風の見た目（html.t-fami）。2026-10-22 に A/B で B を採用、普段の見た目にした。
    このアプリだけの例外（だいき判断: 遊んでよい。ただし使いやすさと軽さが最優先）。
-   OS のライト/ダークには追従しない（ゲーム画面として1つの見た目に決める）。色味は調整中 */
+   OS のライト/ダークには追従しない（ゲーム画面として1つの見た目に決める）。
+   文字は読みやすさ優先でシステムフォント（ドット文字はやめた、2026-10-22）。ゲームらしさは色とドット絵で出す */
 
 /* ---------- 共通 ---------- */
-html.retro {
-  --font: "DotGothic16", "Hiragino Sans", "Noto Sans JP", sans-serif;
-  --radius-card: 6px; --radius-control: 4px; --radius-small: 2px;
-  --fs-caption: 12px; --fs-small: 14px; --fs-body: 16px; --fs-h3: 18px; --fs-h2: 20px;
-}
-html.retro body, html.retro button, html.retro .leaflet-container { font-family: var(--font); letter-spacing: 0.02em; }
-html.retro * { font-weight: 400 !important; }        /* ドットの字は太字にすると崩れる */
+html.retro { --radius-card: 6px; --radius-control: 4px; --radius-small: 2px; }
 html.retro .leaflet-pane canvas { image-rendering: pixelated; }
 html.retro .px { display: block; image-rendering: pixelated; }
 
@@ -65,8 +60,16 @@ html.t-fami .sheet, html.t-fami .near-card, html.t-fami .layer-panel, html.t-fam
 html.t-fami .layer-panel { box-shadow: none; }
 html.t-fami .btn-secondary { border: 2px solid var(--line); color: var(--line); }
 html.t-fami .btn-primary { background: #9E1B22; border: 2px solid #1A1A1A; }
-html.t-fami .lbl, html.t-fami .lbl-poi { background: #FFFDF5; color: #1A1A1A; border: 2px solid #1A1A1A; border-radius: 0; }
-html.t-fami .lbl-road { background: #9E1B22; color: #F3EBDD; border: 2px solid #1A1A1A; border-radius: 0; }
-html.t-fami .lbl-chome { color: #1A1A1A; }
-html.t-fami .lbl-town { color: #9E1B22; background: transparent; border: 0; }
-html.t-fami .lbl-blk { color: #4A4038; }
+/* 地図の文字は枠で囲まず、地面の色で縁取って読ませる（Googleマップと同じ考え方。だいき指摘 2026-10-22） */
+html.t-fami .lbl, html.t-fami .lbl2 {
+  background: transparent; border: 0; padding: 0; border-radius: 0;
+  text-shadow: -1px -1px 0 #FFFDF5, 0 -1px 0 #FFFDF5, 1px -1px 0 #FFFDF5, -1px 0 0 #FFFDF5,
+               1px 0 0 #FFFDF5, -1px 1px 0 #FFFDF5, 0 1px 0 #FFFDF5, 1px 1px 0 #FFFDF5, 0 0 3px #FFFDF5;
+}
+html.t-fami .lbl2 .icon { filter: drop-shadow(0 0 1px #FFFDF5) drop-shadow(0 0 1px #FFFDF5); }
+html.t-fami .lbl-st { color: #1A1A1A; font-size: var(--fs-small); font-weight: 700; }
+html.t-fami .lbl-town { color: #9E1B22; font-size: var(--fs-small); font-weight: 700; }
+html.t-fami .lbl-poi { color: #3A3028; font-weight: 600; }
+html.t-fami .lbl-road { color: #6B5A4A; font-weight: 600; }
+html.t-fami .lbl-chome { color: #1A1A1A; font-weight: 600; }
+html.t-fami .lbl-blk { color: #6B5A4A; }
