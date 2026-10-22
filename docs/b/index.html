@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#2C2C2E" media="(prefers-color-scheme: dark)">
+<title>ねりま無人販売所マップ（B）</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="stylesheet" href="../style.css">
+<style>
+  .maplibregl-map { font-family: var(--font); }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="top-row">
+      <h1>ねりま無人販売所マップ</h1>
+      <button class="btn btn-secondary btn-small" id="listBtn" type="button">一覧</button>
+    </div>
+    <div class="seg" role="group" aria-label="表示する販売所">
+      <button type="button" id="fUnmanned" aria-pressed="true">無人販売機あり<span class="num" id="nUnmanned"></span></button>
+      <button type="button" id="fAll" aria-pressed="false">すべての直売所<span class="num" id="nAll"></span></button>
+    </div>
+  </header>
+  <div class="map-wrap">
+    <div id="map" aria-label="大泉周辺の地図"></div>
+    <div class="banner" id="banner" hidden></div>
+    <div class="controls">
+      <button class="btn btn-secondary btn-round" id="demoBtn" type="button" aria-pressed="false" aria-label="デモ歩行"></button>
+      <button class="btn btn-secondary btn-round" id="compBtn" type="button" aria-pressed="false" aria-label="向きを表示"></button>
+      <button class="btn btn-secondary btn-round" id="locBtn" type="button" aria-pressed="false" aria-label="現在地"></button>
+    </div>
+    <div class="near-card" id="nearCard" hidden></div>
+    <div class="credit">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> ／ <a href="https://www.city.nerima.tokyo.jp/kankomoyoshi/nogyo/tokei/sasshi/hureai-guide.html" target="_blank" rel="noopener">練馬区ふれあいガイド</a></div>
+  </div>
+  <section class="sheet" id="sheet" hidden aria-live="polite"></section>
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="../common.js"></script>
+<script>
+// B: MapLibre。現在地を追うときは地図を傾け、向いている方向を上にする（ポケモンGO風）
+(() => {
+  const css = StandApp.css;
+  const PITCH = 55;
+  let map, area, heading = null, following = false;
+  const pinMarkers = new Map();
+  let meMarker;
+
+  const ll = (p) => [p[1], p[0]];
+  const lines = (list) => ({ type: 'FeatureCollection', features: list.map(c => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: c.map(ll) } })) });
+  const polys = (list) => ({ type: 'FeatureCollection', features: list.filter(c => c.length > 3).map(c => ({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [c.map(ll)] } })) });
+  // 穴（5町）は外枠と逆回りにしないと MapLibre が穴として扱わない
+  const area2 = (r) => r.reduce((s, p, i) => { const q = r[(i + 1) % r.length]; return s + (p[0] * q[1] - q[0] * p[1]); }, 0);
+  const orient = (r, ccw) => (area2(r) > 0) === ccw ? r : r.slice().reverse();
+  const w = (a, b) => ['interpolate', ['exponential', 1.6], ['zoom'], 14, a, 18, b];
+
+  function colors() {
+    return {
+      land: css('--map-land'), farm: css('--map-farm'), park: css('--map-park'), water: css('--map-water'),
+      road: css('--map-road'), casing: css('--map-road-casing'), majorCasing: css('--map-road-major-casing'),
+      rail: css('--map-rail'), border: css('--map-border')
+    };
+  }
+  // [レイヤーID, 種類, データ, 色を返す関数, 太さ]
+  const LAYERS = [
+    ['farm', 'fill', 'farm', c => ({ 'fill-color': c.farm })],
+    ['park', 'fill', 'park', c => ({ 'fill-color': c.park })],
+    ['water', 'fill', 'water', c => ({ 'fill-color': c.water })],
+    ['river', 'line', 'river', c => ({ 'line-color': c.water, 'line-width': w(2, 6) })],
+    ['minor-c', 'line', 'minor', c => ({ 'line-color': c.casing, 'line-width': w(2.5, 14) })],
+    ['mid-c', 'line', 'mid', c => ({ 'line-color': c.casing, 'line-width': w(4.5, 18) })],
+    ['major-c', 'line', 'major', c => ({ 'line-color': c.majorCasing, 'line-width': w(6.5, 26) })],
+    ['minor', 'line', 'minor', c => ({ 'line-color': c.road, 'line-width': w(1.2, 11) })],
+    ['mid', 'line', 'mid', c => ({ 'line-color': c.road, 'line-width': w(3, 15) })],
+    ['major', 'line', 'major', c => ({ 'line-color': c.road, 'line-width': w(4.5, 22) })],
+    ['rail', 'line', 'rail', c => ({ 'line-color': c.rail, 'line-width': w(2, 5) })],
+    ['rail-dash', 'line', 'rail', c => ({ 'line-color': c.land, 'line-width': w(1, 3), 'line-dasharray': [3, 3] })],
+    ['mask', 'fill', 'mask', c => ({ 'fill-color': c.land, 'fill-opacity': 0.72 })],
+    ['border', 'line', 'border', c => ({ 'line-color': c.border, 'line-width': 1, 'line-dasharray': [4, 4], 'line-opacity': 0.6 })]
+  ];
+
+  const adapter = {
+    async init({ D, towns, stands, pins, meEl, onMapClick, onUserMove }) {
+      const ring = towns.flatMap(t => t.rings[0]);
+      area = new maplibregl.LngLatBounds(
+        [Math.min(...ring.map(p => p[1])), Math.min(...ring.map(p => p[0]))],
+        [Math.max(...ring.map(p => p[1])), Math.max(...ring.map(p => p[0]))]);
+      const pad = 0.012;
+      const c = colors();
+      const world = orient([[139.4, 35.6], [139.8, 35.6], [139.8, 35.9], [139.4, 35.9], [139.4, 35.6]], true);
+      const sources = {
+        farm: polys(D.farm), park: polys(D.park), water: polys(D.water), river: lines(D.river),
+        minor: lines(D.minor), mid: lines(D.mid), major: lines(D.major.concat(D.motorway)), rail: lines(D.rail),
+        mask: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [world, ...towns.map(t => orient(t.rings[0].map(ll), false))] } },
+        border: { type: 'FeatureCollection', features: towns.map(t => ({ type: 'Feature', geometry: { type: 'LineString', coordinates: t.rings[0].map(ll) } })) }
+      };
+      map = new maplibregl.Map({
+        container: 'map',
+        style: {
+          version: 8,
+          sources: Object.fromEntries(Object.entries(sources).map(([k, v]) => [k, { type: 'geojson', data: v }])),
+          layers: [{ id: 'bg', type: 'background', paint: { 'background-color': c.land } }].concat(
+            LAYERS.map(([id, type, src, paint]) => ({ id, type, source: src, paint: paint(c), ...(type === 'line' ? { layout: { 'line-cap': 'round', 'line-join': 'round' } } : {}) })))
+        },
+        bounds: area, fitBoundsOptions: { padding: 8 },
+        maxBounds: [[area.getWest() - pad, area.getSouth() - pad], [area.getEast() + pad, area.getNorth() + pad]],
+        maxPitch: 60, attributionControl: false, dragRotate: true, pitchWithRotate: true
+      });
+      await new Promise(r => map.once('load', r));
+      map.setMinZoom(map.getZoom() - 0.5);
+      map.on('click', onMapClick);
+      map.on('dragstart', onUserMove);
+
+      const label = (p, text, cls) => {
+        const div = document.createElement('div');
+        div.className = 'lbl ' + cls; div.textContent = text;
+        new maplibregl.Marker({ element: div }).setLngLat(ll(p)).addTo(map);
+      };
+      D.stations.forEach(s => label(s.p, s.name + '駅', 'lbl-st'));
+      towns.forEach(t => label(t.c, t.name, 'lbl-town'));
+
+      for (const s of stands) pinMarkers.set(s.no, new maplibregl.Marker({ element: pins.get(s.no) }).setLngLat([s.lng, s.lat]));
+      meMarker = new maplibregl.Marker({ element: meEl });
+    },
+    showPins(nos) {
+      const on = new Set(nos);
+      for (const [no, m] of pinMarkers) on.has(no) ? (m._map || m.addTo(map)) : m.remove();
+    },
+    setMe(p) { meMarker.setLngLat([p.lng, p.lat]); if (!meMarker._map) meMarker.addTo(map); },
+    follow(p, h) {
+      following = true;
+      map.easeTo({ center: [p.lng, p.lat], zoom: Math.max(map.getZoom(), 17), pitch: PITCH, bearing: h == null ? map.getBearing() : h, duration: 400 });
+    },
+    setHeading(h) { heading = h; },
+    bearing() { return map.getBearing(); },
+    onRotate(cb) { map.on('rotate', cb); },
+    center() { const c = map.getCenter(); return { lat: c.lat, lng: c.lng }; },
+    areaCenter() { const c = area.getCenter(); return { lat: c.lat, lng: c.lng }; },
+    flyTo(s) { map.easeTo({ center: [s.lng, s.lat], zoom: Math.max(map.getZoom(), 16.5), duration: 400 }); },
+    restyle() {
+      const c = colors();
+      map.setPaintProperty('bg', 'background-color', c.land);
+      for (const [id, , , paint] of LAYERS) for (const [k, v] of Object.entries(paint(c))) if (k.endsWith('color')) map.setPaintProperty(id, k, v);
+    }
+  };
+  StandApp.start(adapter);
+})();
+</script>
+</body>
+</html>

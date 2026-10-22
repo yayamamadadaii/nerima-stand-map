@@ -1,0 +1,332 @@
+// A/B 共通: データ読み込み、画面（見出し・シート・一覧）、現在地、近づくと反応、デモ歩行。
+// 地図ライブラリごとの違いは adapter に閉じ込める（a/index.html = Leaflet、b/index.html = MapLibre）。
+window.StandApp = (() => {
+  const NEAR_M = 60;          // この距離まで近づいたら「すぐ近く」を出す
+  const $ = (id) => document.getElementById(id);
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  const ICONS = {
+    veg: '<path d="M2.27 21.7s9.87-3.5 12.73-6.36a4.5 4.5 0 0 0-6.36-6.37C5.77 11.84 2.27 21.7 2.27 21.7zM8.64 14l-2.05-2.04M15.34 15l-2.46-2.46"/><path d="M22 9s-1.33-2-3.5-2C16.86 7 15 9 15 9s1.33 2 3.5 2S22 9 22 9z"/><path d="M15 2s-2 1.33-2 3.5S15 9 15 9s2-1.84 2-3.5C17 3.33 15 2 15 2z"/>',
+    fruit: '<path d="M22 5V2l-5.89 5.89"/><circle cx="16.6" cy="15.89" r="3"/><circle cx="8.11" cy="7.4" r="3"/><circle cx="12.35" cy="11.65" r="3"/><circle cx="13.91" cy="5.85" r="3"/><circle cx="18.15" cy="10.09" r="3"/><circle cx="6.56" cy="13.2" r="3"/><circle cx="10.8" cy="17.44" r="3"/><circle cx="5" cy="19" r="3"/>',
+    flower: '<circle cx="12" cy="12" r="3"/><path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5"/><path d="M12 7.5V9"/><path d="M7.5 12H9"/><path d="M16.5 12H15"/><path d="M12 16.5V15"/><path d="m8 8 1.88 1.88"/><path d="M14.12 9.88 16 8"/><path d="m8 16 1.88-1.88"/><path d="M14.12 14.12 16 16"/>',
+    nav: '<polygon points="3 11 22 2 13 21 11 13 3 11"/>',
+    list: '<path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/>',
+    x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+    locate: '<line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/>',
+    compass: '<path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/><circle cx="12" cy="12" r="10"/>',
+    play: '<polygon points="6 3 20 12 6 21 6 3"/>',
+    stop: '<rect x="5" y="5" width="14" height="14" rx="2"/>'
+  };
+  function icon(name, cls = '') {
+    const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    s.setAttribute('viewBox', '0 0 24 24');
+    s.setAttribute('class', ('icon ' + cls).trim());
+    s.innerHTML = ICONS[name];
+    return s;
+  }
+  function el(tag, attrs = {}, ...kids) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v == null || v === false) continue;
+      if (k === 'class') e.className = v;
+      else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+      else e.setAttribute(k, v);
+    }
+    for (const k of kids.flat()) if (k != null && k !== false) e.append(k);
+    return e;
+  }
+
+  // 品目から種類を決める（ピンのアイコン用）
+  const FRUIT = /ブドウ|カキ|キウイ|ブルーベリー|ミカン|クリ|イチゴ|イチジク|ブンタン|レモン|ユズ|カンキツ|スイカ/;
+  const FLOWER = /花|苗|シクラメン|パンジー|ビオラ|プリムラ|ペチュニア|マリーゴールド|ハボタン|ポインセチア|インパチェンス|ベゴニア|アジサイ|マーガレット|ロベリア|コスモス|宿根草|多肉|ペンタス|ストック|ぼたん/;
+  function kind(s) {
+    if (s.items.every(i => FLOWER.test(i))) return 'flower';
+    if (s.items.every(i => FRUIT.test(i))) return 'fruit';
+    return 'veg';
+  }
+
+  function distM(a, b) {
+    const r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLng = (b.lng - a.lng) * r;
+    const x = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLng / 2) ** 2;
+    return 2 * 6371000 * Math.asin(Math.sqrt(x));
+  }
+  const fmtDist = (m) => m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`;
+  const routeUrl = (s) => `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}&travelmode=walking`;
+
+  function pointInRing(p, ring) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [yi, xi] = ring[i], [yj, xj] = ring[j];
+      if ((yi > p.lat) !== (yj > p.lat) && p.lng < (xj - xi) * (p.lat - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+
+  async function start(adapter) {
+    const D = await (await fetch('../data/mapdata.json')).json();
+    const towns = D.towns.filter(t => t.name !== '西大泉町');
+    const stands = D.stands.map(s => ({ ...s, kind: kind(s) }));
+    const inArea = (p) => towns.some(t => pointInRing(p, t.rings[0]));
+
+    const st = {
+      filter: 'unmanned', selected: null, sheet: null,
+      me: null,            // {lat, lng, acc}
+      heading: null,       // 度。北=0
+      follow: false, watching: false, demo: null, nearNo: null
+    };
+    try { const f = localStorage.getItem('filter'); if (f === 'all' || f === 'unmanned') st.filter = f; } catch (e) {}
+    const visible = (s) => st.filter === 'all' || s.unmanned;
+
+    // ピン
+    const pins = new Map();
+    for (const s of stands) {
+      const p = el('div', { class: 'pin' + (s.unmanned ? '' : ' other'), role: 'button', 'aria-label': s.name }, icon(s.kind));
+      p.addEventListener('click', (e) => { e.stopPropagation(); openDetail(s.no); });
+      pins.set(s.no, p);
+    }
+    function renderPins() {
+      for (const s of stands) {
+        const p = pins.get(s.no);
+        p.classList.toggle('sel', s.no === st.selected);
+        p.classList.toggle('near', s.no === st.nearNo);
+      }
+      adapter.showPins(stands.filter(visible).map(s => s.no));
+    }
+
+    // 自分のマーカー
+    const meEl = el('div', { class: 'me' }, el('div', { class: 'me-ring' }), el('div', { class: 'me-cone', hidden: true }), el('div', { class: 'me-dot' }));
+    const cone = meEl.querySelector('.me-cone');
+
+    await adapter.init({ D, towns, stands, pins, meEl, css, onMapClick: closeSheet, onUserMove: () => setFollow(false) });
+
+    // ---------- 見出し ----------
+    $('nUnmanned').textContent = stands.filter(s => s.unmanned).length;
+    $('nAll').textContent = stands.length;
+    function setFilter(f) {
+      st.filter = f;
+      try { localStorage.setItem('filter', f); } catch (e) {}
+      $('fUnmanned').setAttribute('aria-pressed', f === 'unmanned');
+      $('fAll').setAttribute('aria-pressed', f === 'all');
+      const sel = stands.find(s => s.no === st.selected);
+      if (sel && !visible(sel)) closeSheet();
+      renderPins(); checkNear();
+      if (st.sheet === 'list') openList();
+    }
+    $('fUnmanned').onclick = () => setFilter('unmanned');
+    $('fAll').onclick = () => setFilter('all');
+    $('listBtn').replaceChildren(icon('list', 'icon-sm'), '一覧');
+    $('listBtn').onclick = () => st.sheet === 'list' ? closeSheet() : openList();
+
+    // ---------- シート ----------
+    const sheet = $('sheet');
+    function head(title, sub) {
+      return el('div', { class: 'sheet-head' },
+        el('div', {}, el('h2', {}, title), sub ? el('div', { class: 'sub' }, sub) : null),
+        el('button', { class: 'close', type: 'button', 'aria-label': '閉じる', onclick: closeSheet }, icon('x', 'icon-sm')));
+    }
+    function showSheet(view, ...content) {
+      st.sheet = view;
+      sheet.replaceChildren(el('div', { class: 'stack' }, ...content));
+      sheet.hidden = false; sheet.scrollTop = 0;
+      $('nearCard').hidden = true;
+    }
+    function closeSheet() {
+      if (sheet.hidden) return;
+      sheet.hidden = true; st.sheet = null;
+      if (st.selected != null) { st.selected = null; renderPins(); }
+      checkNear();
+    }
+    function openDetail(no) {
+      const s = stands.find(x => x.no === no);
+      if (!s) return;
+      st.selected = no; renderPins();
+      const d = st.me ? distM(st.me, s) : null;
+      showSheet('detail',
+        head(s.name, s.address),
+        el('div', { class: 'meta-line' },
+          el('span', { class: s.unmanned ? 'tag' : 'tag tag-plain' }, s.unmanned ? '無人販売機あり' : '直売所'),
+          d != null ? el('span', { class: 'near-dist' }, `ここから ${fmtDist(d)}`) : null,
+          el('span', { class: 'sub' }, `区のガイド No.${s.no}`)),
+        s.note ? el('p', { class: 'note' }, s.note) : null,
+        el('div', { class: 'stack', style: 'gap:4px' },
+          el('div', { class: 'sub' }, '主な品目（時期によって変わります）'),
+          el('div', { class: 'tags' }, s.items.map(i => el('span', { class: 'tag tag-plain' }, i)))),
+        el('a', { class: 'btn btn-primary', href: routeUrl(s), target: '_blank', rel: 'noopener' }, icon('nav'), 'Googleマップで経路を見る'),
+        el('div', { class: 'sub' }, '情報は2025年11月発行の区のガイドより。開いていないこともあります。'));
+    }
+    function openList() {
+      const from = st.me && inArea(st.me) ? st.me : adapter.center();
+      const rows = stands.filter(visible).map(s => ({ s, d: distM(from, s) })).sort((a, b) => a.d - b.d);
+      showSheet('list',
+        head(`${rows.length} か所`, st.me && inArea(st.me) ? '今いる場所から近い順' : '地図の中心から近い順'),
+        el('div', { class: 'list' }, rows.map(({ s, d }) =>
+          el('button', { class: 'row', type: 'button', onclick: () => { setFollow(false); adapter.flyTo(s); openDetail(s.no); } },
+            el('span', { class: 'row-icon' + (s.unmanned ? '' : ' other') }, icon(s.kind)),
+            el('span', { class: 'row-main' },
+              el('div', { class: 'row-title' }, s.name),
+              el('div', { class: 'row-sub' }, `${s.address.replace('練馬区', '')}　${s.items.slice(0, 4).join('・')}`)),
+            el('span', { class: 'row-dist' }, fmtDist(d))))));
+    }
+
+    // ---------- 現在地 ----------
+    const locBtn = $('locBtn'), compBtn = $('compBtn'), demoBtn = $('demoBtn');
+    locBtn.replaceChildren(icon('locate'));
+    compBtn.replaceChildren(icon('compass'));
+    demoBtn.replaceChildren(icon('play'));
+
+    function banner(msg, action) {
+      const b = $('banner');
+      if (!msg) { b.hidden = true; return; }
+      b.replaceChildren(el('span', {}, msg), action || '');
+      b.hidden = false;
+    }
+    function setFollow(on) {
+      st.follow = on;
+      locBtn.setAttribute('aria-pressed', on);
+      if (on && st.me && inArea(st.me)) adapter.follow(st.me, st.heading);
+    }
+    function updateMe(p) {
+      st.me = p;
+      adapter.setMe(p);
+      if (!inArea(p)) {
+        const c = adapter.areaCenter();
+        banner(`今いる場所は大泉5町の外です（中心まで ${fmtDist(distM(p, c))}）`);
+      } else banner('');
+      if (st.follow && inArea(p)) adapter.follow(p, st.heading);
+      checkNear();
+    }
+    function startWatch() {
+      if (!('geolocation' in navigator)) { banner('この端末では現在地が使えません'); return; }
+      if (st.watching) { setFollow(true); return; }
+      st.watching = true;
+      banner('現在地を探しています…');
+      navigator.geolocation.watchPosition(
+        (pos) => {
+          if (st.demo) return;
+          const p = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy };
+          if (st.heading == null && pos.coords.heading != null && !isNaN(pos.coords.heading) && pos.coords.speed > 0.5) setHeading(pos.coords.heading, true);
+          const first = !st.me;
+          updateMe(p);
+          if (first && inArea(p)) setFollow(true);
+        },
+        (err) => {
+          st.watching = false;
+          banner(err.code === 1 ? '位置情報の利用が許可されていません。設定でブラウザに位置情報を許可してください' : '現在地を取得できませんでした。屋外で試してください');
+        },
+        { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
+    }
+    locBtn.onclick = () => { stopDemo(); startWatch(); setFollow(true); };
+
+    // 向き
+    let gpsHeading = false;
+    function setHeading(h, fromGps) {
+      gpsHeading = !!fromGps;
+      st.heading = h;
+      cone.hidden = h == null;
+      cone.style.transform = `rotate(${(h || 0) - adapter.bearing()}deg)`;
+      adapter.setHeading(h);
+      if (st.follow && st.me && inArea(st.me)) adapter.follow(st.me, h);
+    }
+    adapter.onRotate?.(() => { if (st.heading != null) cone.style.transform = `rotate(${st.heading - adapter.bearing()}deg)`; });
+    let lastH = 0;
+    function onOrient(e) {
+      let h = null;
+      if (e.webkitCompassHeading != null) h = e.webkitCompassHeading;
+      else if (e.absolute && e.alpha != null) h = 360 - e.alpha;
+      if (h == null) return;
+      const now = performance.now();
+      if (now - lastH < 100) return;   // 1秒に10回まで
+      lastH = now;
+      setHeading(Math.round(h), false);
+    }
+    async function startCompass() {
+      try {
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+          const r = await DeviceOrientationEvent.requestPermission();
+          if (r !== 'granted') { banner('向きの利用が許可されませんでした'); return; }
+        }
+        window.addEventListener('deviceorientationabsolute', onOrient);
+        window.addEventListener('deviceorientation', onOrient);
+        compBtn.setAttribute('aria-pressed', 'true');
+        if (!st.watching) startWatch();
+      } catch (e) { banner('この端末では向きが使えません'); }
+    }
+    function stopCompass() {
+      window.removeEventListener('deviceorientationabsolute', onOrient);
+      window.removeEventListener('deviceorientation', onOrient);
+      compBtn.setAttribute('aria-pressed', 'false');
+      setHeading(null);
+    }
+    compBtn.onclick = () => compBtn.getAttribute('aria-pressed') === 'true' ? stopCompass() : startCompass();
+
+    // 近づくと反応
+    function checkNear() {
+      const card = $('nearCard');
+      if (!st.me || !inArea(st.me)) { st.nearNo = null; card.hidden = true; renderPins(); return; }
+      let best = null;
+      for (const s of stands) {
+        if (!visible(s)) continue;
+        const d = distM(st.me, s);
+        if (d <= NEAR_M && (!best || d < best.d)) best = { s, d };
+      }
+      const no = best ? best.s.no : null;
+      if (no !== st.nearNo) { st.nearNo = no; renderPins(); if (no && navigator.vibrate) navigator.vibrate(30); }
+      if (!best || st.sheet) { card.hidden = true; return; }
+      card.replaceChildren(
+        el('span', { class: 'row-icon' + (best.s.unmanned ? '' : ' other') }, icon(best.s.kind)),
+        el('div', {}, el('div', { class: 'eyebrow' }, 'すぐ近くに販売所'), el('div', { class: 'title' }, best.s.name)),
+        el('span', { class: 'near-dist' }, fmtDist(best.d)));
+      card.onclick = () => openDetail(best.s.no);
+      card.hidden = false;
+    }
+
+    // ---------- デモ歩行（机の上で試す用） ----------
+    function stopDemo() {
+      if (!st.demo) return;
+      clearInterval(st.demo); st.demo = null;
+      demoBtn.replaceChildren(icon('play')); demoBtn.setAttribute('aria-pressed', 'false');
+      demoBtn.setAttribute('aria-label', 'デモ歩行');
+    }
+    demoBtn.onclick = () => {
+      if (st.demo) { stopDemo(); return; }
+      // 大泉学園駅から、無人販売機のある販売所を近い順に3か所めぐる
+      const station = D.stations.find(s => s.name === '大泉学園') || D.stations[0];
+      let cur = { lat: station.p[0], lng: station.p[1] };
+      const route = [cur];
+      const pool = stands.filter(s => s.unmanned);
+      for (let i = 0; i < 3; i++) {
+        pool.sort((a, b) => distM(cur, a) - distM(cur, b));
+        cur = pool.shift(); route.push({ lat: cur.lat, lng: cur.lng });
+      }
+      let seg = 0, t = 0;
+      const STEP = 12;   // 1回で進む距離(m)。実際の歩く速さの約10倍
+      demoBtn.replaceChildren(icon('stop')); demoBtn.setAttribute('aria-pressed', 'true');
+      demoBtn.setAttribute('aria-label', 'デモ歩行を止める');
+      setFollow(true);
+      st.demo = setInterval(() => {
+        const a = route[seg], b = route[seg + 1];
+        if (!b) { stopDemo(); return; }
+        const len = distM(a, b);
+        t += STEP / Math.max(len, 1);
+        if (t >= 1) { seg++; t = 0; return; }
+        const p = { lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t, acc: 5 };
+        const h = (Math.atan2((b.lng - a.lng) * Math.cos(a.lat * Math.PI / 180), b.lat - a.lat) * 180 / Math.PI + 360) % 360;
+        setHeading(Math.round(h), true);
+        updateMe(p);
+      }, 400);
+    };
+
+    // テーマ切り替え
+    matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => adapter.restyle());
+
+    // 許可済みなら最初から現在地を出す
+    try {
+      const perm = await navigator.permissions?.query({ name: 'geolocation' });
+      if (perm && perm.state === 'granted') startWatch();
+    } catch (e) {}
+
+    setFilter(st.filter);
+  }
+
+  return { start, css, distM };
+})();
