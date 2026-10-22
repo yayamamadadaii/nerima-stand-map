@@ -4,14 +4,15 @@
 window.MapLayers = (() => {
   const KEY = 'layers';
   const GROUPS = [
-    { id: 'poi', label: '目印', sub: '学校・コンビニ・郵便局・公園など' },
-    { id: 'road', label: '道路名', sub: '大泉街道・富士街道など' },
+    { id: 'poi', label: '目印', sub: '学校・お店・銀行・郵便局・公園など' },
+    { id: 'road', label: '道路名・交差点名', sub: '大泉街道・富士街道、信号の名前など' },
     { id: 'addr', label: '丁目・番地', sub: '番地は大きく拡大したときだけ' }
   ];
   // 目印の種類: [表示し始めるズーム, 優先度（小さいほど先に置く）]。種類は文字の色で見分ける（k-種類 のクラス）
   const KINDS = {
     school: [15.75, 5], kinder: [17, 8], post: [16, 6], police: [16, 6], fire: [16, 6], public: [16, 6],
-    shrine: [16.5, 7], super: [16, 6], conv: [16.5, 7], park: [16.75, 8]
+    shrine: [16.5, 7], super: [16, 6], conv: [16.5, 7], park: [16.75, 8],
+    drug: [16.5, 7], variety: [16.5, 7], bank: [16.5, 7], fuel: [16.5, 7], food: [17, 8]
   };
   const ICONS = {
     layers: '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>'
@@ -52,6 +53,7 @@ window.MapLayers = (() => {
     const items = [];
     L0.chome.forEach(([lat, lng, t], i) => items.push({ id: 'c' + i, g: 'addr', lat, lng, text: t, cls: 'lbl-chome', z: 15, prio: 3 }));
     L0.roads.forEach(([lat, lng, t], i) => items.push({ id: 'r' + i, g: 'road', lat, lng, text: t, cls: 'lbl-road', z: 15.5, prio: 4 }));
+    (L0.cross || []).forEach(([lat, lng, t], i) => items.push({ id: 'x' + i, g: 'road', lat, lng, text: t, cls: 'lbl-cross', z: 16, prio: 4.5 }));
     L0.pois.forEach(([lat, lng, k, t], i) => {
       const [z, prio] = KINDS[k];
       items.push({ id: 'p' + i, g: 'poi', lat, lng, text: t, cls: 'lbl-poi k-' + k, z, prio });

@@ -55,13 +55,24 @@ TYPES = [('school', lambda t: t.get('amenity') in ('school', 'university', 'coll
          ('shrine', lambda t: t.get('amenity') == 'place_of_worship'),
          ('conv', lambda t: t.get('shop') == 'convenience'),
          ('super', lambda t: t.get('shop') == 'supermarket'),
+         ('drug', lambda t: t.get('amenity') == 'pharmacy' or t.get('shop') == 'chemist'),
+         ('variety', lambda t: t.get('shop') == 'variety_store'),
+         ('food', lambda t: t.get('amenity') in ('fast_food', 'cafe', 'restaurant')),   # restaurant はチェーン（brand あり）だけ取っている
+         ('bank', lambda t: t.get('amenity') == 'bank'),
+         ('fuel', lambda t: t.get('amenity') == 'fuel'),
          ('park', lambda t: t.get('leisure') == 'park')]
-pois = []
+pois, cross = [], []
 for e in P:
     t = e.get('tags', {})
     c = e.get('center') or ({'lat': e['lat'], 'lon': e['lon']} if 'lat' in e else None)
     if not c: continue
     lat, lng = c['lat'], c['lon']
+    # 交差点名（信号や交差点に付いた名前）
+    if e['type'] == 'node' and (t.get('highway') == 'traffic_signals' or 'junction' in t):
+        nm = t.get('name', '')
+        if nm and in_area(lat, lng, 0.001) and all(dist((lat, lng), (q[0], q[1])) > 80 or q[2] != nm for q in cross):
+            cross.append([r5(lat), r5(lng), nm])
+        continue
     if 'highway' in t:
         nm = t.get('name', '')
         if nm and not SKIP.search(nm) and in_area(lat, lng, 0.001): roads.setdefault(nm, []).append((lat, lng))
@@ -69,8 +80,10 @@ for e in P:
     if t.get('boundary'): continue
     if not in_area(lat, lng, 0.001): continue
     kind = next((k for k, fn in TYPES if fn(t)), None)
-    name = t.get('name') or {'conv': t.get('brand', 'コンビニ'), 'super': t.get('brand', 'スーパー')}.get(kind)
-    if kind and name: pois.append([r5(lat), r5(lng), kind, name])
+    name = t.get('name') or t.get('brand') or {'conv': 'コンビニ', 'super': 'スーパー'}.get(kind)
+    # 同じ店が「薬局」と「ドラッグストア」の2つで登録されていることがあるので、近くの同名は1つに
+    if kind and name and all(q[3] != name or dist((lat, lng), (q[0], q[1])) > 40 for q in pois):
+        pois.append([r5(lat), r5(lng), kind, name])
 # 同じ名前の道路は 600m 以上離して置く
 road_lbl = []
 for nm, pts in roads.items():
@@ -79,7 +92,7 @@ for nm, pts in roads.items():
         if all(dist(p, q) > 600 for q in placed): placed.append(p)
     road_lbl += [[r5(p[0]), r5(p[1]), nm] for p in placed]
 
-out = {'chome': chome_lbl, 'blocks': blocks, 'roads': road_lbl, 'pois': pois}
+out = {'chome': chome_lbl, 'blocks': blocks, 'roads': road_lbl, 'cross': cross, 'pois': pois}
 s = json.dumps(out, ensure_ascii=False, separators=(',', ':'))
 open(out_path, 'w', encoding='utf-8').write(s)
 from collections import Counter

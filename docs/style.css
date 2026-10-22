@@ -110,6 +110,7 @@ h1 { margin: 0; font-size: var(--fs-h3); font-weight: 600; line-height: var(--lh
 .lbl-road { padding: 4px 6px; font-weight: 600; }
 .lbl-chome { font-weight: 600; color: var(--text); }
 .lbl-blk { font-variant-numeric: tabular-nums; }
+.lbl-cross { font-size: var(--fs-caption); }
 
 /* 情報レイヤーの切り替え */
 .layer-panel {

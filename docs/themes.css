@@ -92,7 +92,11 @@ html.t-fami .lbl-poi { color: #3A3028; font-weight: 600; }
 html.t-fami .k-park { color: #3F7A33; }
 html.t-fami .k-school, html.t-fami .k-kinder, html.t-fami .k-shrine { color: #7A5A36; }
 html.t-fami .k-post, html.t-fami .k-police, html.t-fami .k-fire, html.t-fami .k-public { color: #4E5F80; }
-html.t-fami .k-conv, html.t-fami .k-super { color: #A8541E; }
+html.t-fami .k-conv, html.t-fami .k-super, html.t-fami .k-drug, html.t-fami .k-variety { color: #A8541E; }
+html.t-fami .k-food { color: #B0463A; }
+html.t-fami .k-bank, html.t-fami .k-fuel { color: #4E5F80; }
+/* 交差点名: 道路名より少し小さく、こげ茶 */
+html.t-fami .lbl-cross { color: #5A4A3A; font-weight: 600; }
 html.t-fami .lbl-road { color: #6B5A4A; font-weight: 600; }
 html.t-fami .lbl-chome { color: #1A1A1A; font-weight: 600; }
 html.t-fami .lbl-blk { color: #6B5A4A; }
