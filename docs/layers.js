@@ -42,7 +42,7 @@ window.MapLayers = (() => {
           draw();
         };
         return row;
-      }), Object.assign(document.createElement('div'), { className: 'toggle-credit', textContent: '番地: 位置参照情報（国土交通省）を加工' }));
+      }), Object.assign(document.createElement('div'), { className: 'toggle-credit', textContent: '番地: 位置参照情報（国土交通省）を加工 ／ 一部のお店: © Overture Maps Foundation' }));
     }
     renderPanel();
     btn.onclick = (e) => { e.stopPropagation(); panel.hidden = !panel.hidden; btn.setAttribute('aria-expanded', !panel.hidden); };

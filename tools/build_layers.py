@@ -1,7 +1,9 @@
 # レイヤー用データ（丁目・番地・道路名・目印）を作る
-# usage: python3 build_layers.py <osm_poi.json> <isj.csv(cp932)> <mapdata.json> <out.json>
+# usage: python3 build_layers.py <osm_poi.json> <isj.csv(cp932)> <mapdata.json> <out.json> [overture.json]
+#   overture.json（fetch_overture.py の出力）があれば、OSM に無いコンビニ・ドラッグストア・ガソリンスタンドを補う
 import csv, json, math, re, sys
 poi_path, isj_path, map_path, out_path = sys.argv[1:5]
+ov_path = sys.argv[5] if len(sys.argv) > 5 else None
 M = json.load(open(map_path, encoding='utf-8'))
 towns = [t for t in M['towns'] if t['name'] != '西大泉町']
 TOWN_NAMES = ('大泉学園町', '東大泉', '西大泉', '南大泉', '大泉町')
@@ -84,6 +86,28 @@ for e in P:
     # 同じ店が「薬局」と「ドラッグストア」の2つで登録されていることがあるので、近くの同名は1つに
     if kind and name and all(q[3] != name or dist((lat, lng), (q[0], q[1])) > 40 for q in pois):
         pois.append([r5(lat), r5(lng), kind, name])
+# Overture で OSM の抜けを補う（コンビニ・ドラッグストア・ガソリンスタンドだけ。雑音が多いので条件を絞る）
+OV_KIND = {'convenience_store': 'conv', 'pharmacy_and_drug_store': 'drug', 'gas_station': 'fuel'}
+OV_OK = {   # 名前にこれが入っているものだけ（会社の事務所や葬儀屋などを除くため）
+    'conv': re.compile(r'セブン|ローソン|ファミリーマート|ミニストップ|デイリーヤマザキ|ニューデイズ|NewDays|ポプラ|セイコーマート'),
+    'drug': re.compile(r'薬局|薬店|ドラッグ|マツモトキヨシ|ウエルシア|ウェルパーク|クリエイト|スギ|トモズ|セイムス|ツルハ|サンドラッグ|ココカラ|クスリ'),
+    'fuel': re.compile(r'ENEOS|エネオス|出光|IDEMITSU|コスモ|シェル|apollo|アポロ|キグナス|KYGNUS|ガソリン|SS$|サービスステーション'),
+}
+OV_NG = re.compile(r'株式会社|\(株\)|（株）|有限会社|事務所|オフィス|本社|本部|営業所|ATM|西東京|新座|和光|保谷')   # 隣の市の店名は位置がずれているので除く
+added = []
+if ov_path:
+    for o in json.load(open(ov_path, encoding='utf-8')):
+        kind = OV_KIND.get(o.get('cat'))
+        name = re.sub(r'[\u3000\s]+', ' ', (o.get('name') or '')).strip()
+        if not kind or not name or (o.get('confidence') or 0) < 0.8: continue
+        if not OV_OK[kind].search(name) or OV_NG.search(name): continue
+        lat, lng = o['lat'], o['lng']
+        if not in_area(lat, lng, 0.001): continue
+        # すでにある同じ種類の店が近くにあれば同じ店とみなす（60m 以内、または同じ名前で 150m 以内）
+        if any(q[2] == kind and (dist((lat, lng), (q[0], q[1])) < 60 or (q[3] == name and dist((lat, lng), (q[0], q[1])) < 150)) for q in pois): continue
+        pois.append([r5(lat), r5(lng), kind, name])
+        added.append((kind, name))
+
 # 同じ名前の道路は 600m 以上離して置く
 road_lbl = []
 for nm, pts in roads.items():
@@ -96,4 +120,6 @@ out = {'chome': chome_lbl, 'blocks': blocks, 'roads': road_lbl, 'cross': cross, 
 s = json.dumps(out, ensure_ascii=False, separators=(',', ':'))
 open(out_path, 'w', encoding='utf-8').write(s)
 from collections import Counter
-print(len(s), {k: len(v) for k, v in out.items()}, Counter(p[2] for p in pois), sorted(roads)[:40])
+print(len(s), {k: len(v) for k, v in out.items()}, Counter(p[2] for p in pois))
+print('Overture から足した店:', len(added))
+for a in added: print('  ', *a)
