@@ -68,13 +68,13 @@ window.StandApp = (() => {
     const inArea = (p) => towns.some(t => pointInRing(p, t.rings[0]));
 
     const st = {
-      filter: 'unmanned', selected: null, sheet: null,
+      selected: null, sheet: null,
       me: null,            // {lat, lng, acc}
       heading: null,       // 度。北=0
       follow: false, watching: false, nearNo: null
     };
-    try { const f = localStorage.getItem('filter'); if (f === 'manned' || f === 'unmanned') st.filter = f; } catch (e) {}
-    const visible = (s) => st.filter === 'unmanned' ? s.unmanned : !s.unmanned;
+    // 無人販売所と直売所は分けずに全部出し、ピンの絵で見分ける（2026-10-22 タブを廃止）
+    const visible = () => true;
 
     // ピン
     const pins = new Map();
@@ -99,20 +99,6 @@ window.StandApp = (() => {
     await adapter.init({ D, towns, stands, pins, meEl, css, onMapClick: closeSheet, onUserMove: () => setFollow(false) });
 
     // ---------- 見出し ----------
-    $('nUnmanned').textContent = stands.filter(s => s.unmanned).length;
-    $('nManned').textContent = stands.filter(s => !s.unmanned).length;
-    function setFilter(f) {
-      st.filter = f;
-      try { localStorage.setItem('filter', f); } catch (e) {}
-      $('fUnmanned').setAttribute('aria-pressed', f === 'unmanned');
-      $('fManned').setAttribute('aria-pressed', f === 'manned');
-      const sel = stands.find(s => s.no === st.selected);
-      if (sel && !visible(sel)) closeSheet();
-      renderPins(); checkNear();
-      if (st.sheet === 'list') openList();
-    }
-    $('fUnmanned').onclick = () => setFilter('unmanned');
-    $('fManned').onclick = () => setFilter('manned');
     $('listBtn').replaceChildren(icon('list', 'icon-sm'), '一覧');
     $('listBtn').onclick = () => st.sheet === 'list' ? closeSheet() : openList();
 
@@ -289,7 +275,7 @@ window.StandApp = (() => {
       if (perm && perm.state === 'granted') startWatch();
     } catch (e) {}
 
-    setFilter(st.filter);
+    renderPins(); checkNear();
   }
 
   return { start, css, distM };

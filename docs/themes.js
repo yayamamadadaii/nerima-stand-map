@@ -12,25 +12,28 @@ window.Theme = (() => {
   if (window.L) L.Browser.retina = false;
 
   const PAL = {
-    K: '#000000', W: '#FCFCFC', R: '#E40058', P: '#6844FC', L: '#B8B8F8', D: '#3C1C9C', M: '#F878F8',
-    Y: '#F8B800', G: '#00A800', B: '#7C3C00', S: '#FCD8A8', U: '#0058F8', O: '#F87858'
+    K: '#3A2A1A', W: '#FFFDF5', R: '#E43B44', O: '#F7962F', Y: '#F8D040', G: '#4CAF3A', L: '#8FD45A', P: '#7A4FC8',
+    B: '#6B3A1A', N: '#C98A4A', C: '#F6E7C4', S: '#FCD8A8', U: '#2F6FD8', E: '#9A9A9A', H: '#F8B800', V: '#0058F8'
   };
   const SPRITES = {
-    veg: [
-      '.......G......', '.....GKGKG....', '...KKRGGGKK...', '..KRRRRRRRRK..', '..KRWRRRRRRK..', '.KRRRRRRRRRRK.',
-      '.KRRRRRRRRRRK.', '.KRRRRRRRRRRK.', '.KRRRRRRRRRRK.', '..KRRRRRRRRK..', '..KRRRRRRRRK..', '...KKRRRRKK...', '.....KKKK.....'],
-    fruit: [
-      '........G.....', '.......BGG....', '......B.......', '..DPD.DPD.DPD.', '..PLP.PLP.PLP.', '..DPD.DPD.DPD.',
-      '....DPD.DPD...', '....PLP.PLP...', '....DPD.DPD...', '......DPD.....', '......PLP.....', '......DPD.....'],
-    flower: [
-      '......MM......', '.....MWMM.....', '..MMM.MM.MMM..', '.MWMMMYYMMMMM.', '.MMMMYYYYMMMM.', '..MMMMYYMMMM..',
-      '..MMM.MM.MMM..', '.....MMMM.....', '......MM......', '.......G......', '...GG..G..GG..', '....GGGG.GG...', '.......G......'],
+    // 無人販売所: 屋根つきの棚に野菜と果物
+    shelf: [
+      '...KKKKKKKKKK...', '..KBBBBBBBBBBK..', '.KBBBBBBBBBBBBK.', 'KKKKKKKKKKKKKKKK',
+      'KNCCCCCCCCCCCCNK', 'KNCRRCOOCLLCPPNK', 'KNKRRKOOKGGKPPNK', 'KNNNNNNNNNNNNNNK',
+      'KNCYYCLLCRRCEENK', 'KNKYYKGGKRRKEENK', 'KNNNNNNNNNNNNNNK', '.KN..........NK.',
+      '.KN..........NK.', '.KK..........KK.'],
+    // 直売所: しま模様のテントの下に、お店の人
+    tent: [
+      '...KKKKKKKKKK...', '..KRRWWRRWWRRK..', '.KRRWWRRWWRRWWK.', 'KRRWWRRWWRRWWRRK',
+      'KKKKKKKKKKKKKKKK', '.K....BBBB....K.', '.K...BSSSSB...K.', '.K...SKSSKS...K.',
+      '.K....SKKS....K.', '.KRR.UUUUUU.LL.K', 'KKKKKKKKKKKKKKKK', 'KNNNNNNNNNNNNNNK',
+      'KNNNNNNNNNNNNNNK', '.KN..........NK.', '.KK..........KK.'],
     hero1: [
-      '...YYYYYY...', '..YYYYYYYY..', 'YYYYYYYYYYYY', '..KSSSSSSK..', '..SSKSSKSS..', '..SSSSSSSS..', '...SSSSSS...',
-      '..UUUUUUUU..', '.SUUWUUWUUS.', '.SUUUUUUUUS.', '..UUUUUUUU..', '..BBB..BBB..', '..KKK..KKK..'],
+      '...HHHHHH...', '..HHHHHHHH..', 'HHHHHHHHHHHH', '..KSSSSSSK..', '..SSKSSKSS..', '..SSSSSSSS..', '...SSSSSS...',
+      '..VVVVVVVV..', '.SVVWVVWVVS.', '.SVVVVVVVVS.', '..VVVVVVVV..', '..BBB..BBB..', '..KKK..KKK..'],
     hero2: [
-      '...YYYYYY...', '..YYYYYYYY..', 'YYYYYYYYYYYY', '..KSSSSSSK..', '..SSKSSKSS..', '..SSSSSSSS..', '...SSSSSS...',
-      '..UUUUUUUU..', '.SUUWUUWUUS.', '.SUUUUUUUUS.', '..UUUUUUUU..', '..BBB...BB..', '..KK....KKK.']
+      '...HHHHHH...', '..HHHHHHHH..', 'HHHHHHHHHHHH', '..KSSSSSSK..', '..SSKSSKSS..', '..SSSSSSSS..', '...SSSSSS...',
+      '..VVVVVVVV..', '.SVVWVVWVVS.', '.SVVVVVVVVS.', '..VVVVVVVV..', '..BBB...BB..', '..KK....KKK.']
   };
   function sprite(key, scale = 2) {
     const rows = SPRITES[key], w = rows[0].length, h = rows.length;
@@ -52,8 +55,8 @@ window.Theme = (() => {
 
   return {
     name,
-    pin: (s) => html(sprite(s.kind, 2)),
-    icon: (s) => html(sprite(s.kind, 1.5)),
+    pin: (s) => html(sprite(s.unmanned ? 'shelf' : 'tent', 2.25)),
+    icon: (s) => html(sprite(s.unmanned ? 'shelf' : 'tent', 1.75)),
     me: () => {
       const d = document.createElement('div');
       d.className = 'me me-px';
