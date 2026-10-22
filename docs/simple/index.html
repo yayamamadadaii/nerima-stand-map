@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#2C2C2E" media="(prefers-color-scheme: dark)">
 <title>大泉学園無人販売所</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script>window.APP_V = "202610221718"; window.APP_BASE = "../"; window.APP_THEME = "simple";</script>
+<script>window.APP_V = "202610221752"; window.APP_BASE = "../"; window.APP_THEME = "simple";</script>
 <script>
   // GitHub Pages はページを最大10分スマホに残すので、新しい版が出ていたら1回だけ読み直す
   fetch((window.APP_BASE || '') + 'version.txt?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(v => {
@@ -18,12 +18,12 @@
     location.reload();
   }).catch(() => {});
 </script>
-<link rel="stylesheet" href="../style.css?v=202610221718">
+<link rel="stylesheet" href="../style.css?v=202610221752">
 <script>
   // 普段はファミコン本体風。simple/ のページか ?theme=simple のときだけシンプルな見た目
   if ((window.APP_THEME || new URLSearchParams(location.search).get('theme') || 'fami') === 'fami') document.documentElement.classList.add('retro', 't-fami');
 </script>
-<link rel="stylesheet" href="../themes.css?v=202610221718">
+<link rel="stylesheet" href="../themes.css?v=202610221752">
 <style>
   .leaflet-container { font-family: var(--font); background: var(--map-land); }
   .lbl { transform: translate(-50%, -50%); }
@@ -57,17 +57,19 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="../themes.js?v=202610221718"></script>
-<script src="../common.js?v=202610221718"></script>
-<script src="../layers.js?v=202610221718"></script>
+<script src="../themes.js?v=202610221752"></script>
+<script src="../common.js?v=202610221752"></script>
+<script src="../decor.js?v=202610221752"></script>
+<script src="../layers.js?v=202610221752"></script>
 <script>
 // Leaflet で真上から見た平らな地図を描く。軽さ優先
 (() => {
   const css = StandApp.css;
-  let map, styled = [], mask, borders = [], pinMarkers = new Map(), meMarker, area, stations = [], layers;
+  let map, styled = [], mask, borders = [], pinMarkers = new Map(), meMarker, area, stations = [], layers, mapData, decorRestyle;
 
   const adapter = {
     async init({ D, towns, stands, pins, meEl, onMapClick, onUserMove }) {
+      mapData = D;
       const ring = towns.flatMap(t => t.rings[0]);
       area = L.latLngBounds(
         [Math.min(...ring.map(p => p[0])), Math.min(...ring.map(p => p[1]))],
@@ -78,20 +80,25 @@
       map.on('click', onMapClick);
       map.on('dragstart', onUserMove);
 
+      map.createPane('land').style.zIndex = 240;
       map.createPane('base').style.zIndex = 250;
       map.createPane('mask').style.zIndex = 380;
       map.createPane('labels').style.zIndex = 390;
+      // 面（畑・公園・水）と線（道・川・線路）は別のキャンバス。間に細い道（decor.js）が入る
+      const landCanvas = L.canvas({ pane: 'land', padding: 0.3 });
       const canvas = L.canvas({ pane: 'base', padding: 0.3 });
       const add = (list, fn, poly) => {
-        const o = { renderer: canvas, interactive: false, ...fn() };
+        const o = { renderer: poly ? landCanvas : canvas, interactive: false, ...fn() };
         styled.push([(poly ? L.polygon(list, o) : L.polyline(list, o)).addTo(map), fn]);
       };
       const zw = () => Math.max(0, map.getZoom() - 15);
       const R = { lineCap: 'round', lineJoin: 'round' };
       const major = D.major.concat(D.motorway);
-      add(D.farm.map(r => [r]), () => ({ stroke: false, fillColor: css('--map-farm'), fillOpacity: 1 }), true);
-      add(D.park.map(r => [r]), () => ({ stroke: false, fillColor: css('--map-park'), fillOpacity: 1 }), true);
-      add(D.water.map(r => [r]), () => ({ stroke: false, fillColor: css('--map-water'), fillOpacity: 1 }), true);
+      // ファミコン本体風のときは、畑・公園・水をドットの模様で塗る（decor.js）
+      const fill = (k) => Decor.pattern(k) || css('--map-' + k);
+      add(D.farm.map(r => [r]), () => ({ stroke: false, fillColor: fill('farm'), fillOpacity: 1 }), true);
+      add(D.park.map(r => [r]), () => ({ stroke: false, fillColor: fill('park'), fillOpacity: 1 }), true);
+      add(D.water.map(r => [r]), () => ({ stroke: false, fillColor: fill('water'), fillOpacity: 1 }), true);
       add(D.river, () => ({ color: css('--map-water'), weight: 2 + zw(), lineCap: 'round' }));
       add(D.minor, () => ({ ...R, color: css('--map-road-casing'), weight: 3 + zw() * 2 }));
       add(D.mid, () => ({ ...R, color: css('--map-road-casing'), weight: 5 + zw() * 2 }));
@@ -138,11 +145,15 @@
       styled.forEach(([l, fn]) => l.setStyle(fn()));
       mask.setStyle({ fillColor: css('--map-land') });
       borders.forEach(b => b.setStyle({ color: css('--map-border') }));
+      decorRestyle?.();
     }
   };
   // 文字が販売所のピンや駅名に重ならないよう、それらの場所を渡す
   const occupied = () => [...[...pinMarkers.values()].filter(m => map.hasLayer(m)).map(m => m.getLatLng()), ...stations];
-  StandApp.start(adapter).then(async () => { layers = await MapLayers.attach(map, { occupied }); });
+  StandApp.start(adapter).then(async () => {
+    layers = await MapLayers.attach(map, { occupied });
+    await Decor.attach(map, mapData, { onRestyle: (fn) => { decorRestyle = fn; } });
+  });
 })();
 </script>
 </body>
