@@ -1,17 +1,13 @@
-// ファミコン風の見た目（試作）。?theme=rpg または ?theme=fami で切り替える。指定がなければ何もしない。
+// ファミコン本体風の見た目（普段の見た目）。シンプルな見た目は simple/ のページ（または ?theme=simple）。
 // ドット絵は文字列で持ち、その場で小さな SVG にする（画像ファイルを増やさない）。
 window.Theme = (() => {
-  // rpg/ と fami/ のページは window.APP_THEME で指定する。?theme= でも切り替えられる
-  const name = window.APP_THEME || new URLSearchParams(location.search).get('theme');
-  if (name !== 'rpg' && name !== 'fami') return null;
+  // simple/ のページは window.APP_THEME = "simple"。?theme=simple でも切り替えられる
+  const name = window.APP_THEME || new URLSearchParams(location.search).get('theme') || 'fami';
+  if (name !== 'fami') return null;
 
-  const root = document.documentElement;
-  root.classList.add('retro', 't-' + name);
-  document.head.insertAdjacentHTML('beforeend',
-    '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
-    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap">' +
-    `<link rel="stylesheet" href="${window.APP_BASE || ''}themes.css?v=${window.APP_V || ''}">`);
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', name === 'rpg' ? '#000000' : '#A51C1C');
+  // クラスと CSS・フォントは、表示のちらつきを防ぐため index.html の head で先に入れている
+  document.documentElement.classList.add('retro', 't-' + name);
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', '#A51C1C'));
   // 地図の線を等倍で描いて拡大する（ドットが見える。描く量も減って軽くなる）
   if (window.L) L.Browser.retina = false;
 
@@ -52,9 +48,7 @@ window.Theme = (() => {
   }
   const html = (s) => { const t = document.createElement('template'); t.innerHTML = s; return t.content.firstChild; };
 
-  const copy = name === 'rpg'
-    ? { near: () => 'はんばいじょを みつけた！', route: 'けいろを しらべる' }
-    : { near: () => 'ちかくに あるよ！', route: 'Googleマップで けいろ' };
+  const copy = { near: () => 'ちかくに あるよ！', route: 'Googleマップで けいろ' };
 
   return {
     name,

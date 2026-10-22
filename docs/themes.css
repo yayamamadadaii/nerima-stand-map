@@ -1,6 +1,6 @@
-/* ファミコン風の見た目（試作）。html.t-rpg = A「RPG風」、html.t-fami = B「ファミコン本体風」
+/* ファミコン本体風の見た目（html.t-fami）。2026-10-22 に A/B で B を採用、普段の見た目にした。
    このアプリだけの例外（だいき判断: 遊んでよい。ただし使いやすさと軽さが最優先）。
-   どちらも OS のライト/ダークには追従しない（ゲーム画面として1つの見た目に決める） */
+   OS のライト/ダークには追従しない（ゲーム画面として1つの見た目に決める）。色味は調整中 */
 
 /* ---------- 共通 ---------- */
 html.retro {
@@ -44,38 +44,7 @@ html.retro .btn-primary .icon { display: none; }
 html.retro .btn-primary::before { content: "▶"; }
 html.retro .seg button[aria-pressed="true"]::before { content: "▶ "; }
 
-/* ---------- A: RPG風（黒いウィンドウ＋白い枠） ---------- */
-html.t-rpg {
-  --bg: #000000; --surface: #000000; --line: #FCFCFC; --text: #FCFCFC; --text-sub: #BCBCBC;
-  --accent: #000000; --accent-text: #FCA044; --accent-soft: rgba(252, 160, 68, 0.2);
-  --danger: #F83800; --success: #58D854;
-  --map-land: #B8F8B8; --map-farm: #58D854; --map-park: #00A844; --map-water: #3CBCFC;
-  --map-road: #FCE0A8; --map-road-casing: #C84C0C; --map-road-major-casing: #AC7C00;
-  --map-rail: #000000; --map-border: #000000;
-  color-scheme: dark;
-}
-html.t-rpg .top, html.t-rpg .sheet, html.t-rpg .near-card, html.t-rpg .layer-panel, html.t-rpg .banner {
-  border: 3px solid var(--line); border-radius: var(--radius-card); background: var(--surface);
-}
-html.t-rpg .top { margin: 8px 8px 0; }
-html.t-rpg .sheet { margin: 0 8px 8px; }
-html.t-rpg .layer-panel { box-shadow: none; }
-html.t-rpg .seg { background: transparent; border: 0; }
-html.t-rpg .seg button { color: var(--text-sub); }
-html.t-rpg .seg button[aria-pressed="true"] { background: transparent; color: var(--text); }
-html.t-rpg .btn-secondary, html.t-rpg .close { background: #000; color: #FCFCFC; border: 2px solid #FCFCFC; }
-html.t-rpg .btn-primary { background: #000; color: #FCFCFC; border: 3px solid #FCFCFC; }
-html.t-rpg .btn-round[aria-pressed="true"] { color: var(--accent-text); border-color: var(--accent-text); }
-html.t-rpg .tag { background: transparent; border: 1px solid var(--accent-text); }
-html.t-rpg .tag-plain { color: var(--text); border-color: var(--text-sub); }
-html.t-rpg .near-dist, html.t-rpg .near-card .eyebrow { color: var(--accent-text); }
-html.t-rpg .lbl, html.t-rpg .lbl-poi, html.t-rpg .lbl-road { background: #000; color: #FCFCFC; border: 2px solid #FCFCFC; }
-html.t-rpg .lbl-town, html.t-rpg .lbl-chome, html.t-rpg .lbl-blk { color: #000; background: transparent; border: 0; }
-html.t-rpg .credit { background: #000; color: #BCBCBC; border-color: #FCFCFC; }
-html.t-rpg .toggle input { background: #444; }
-html.t-rpg .toggle input:checked { background: var(--accent-text); }
-
-/* ---------- B: ファミコン本体風（えんじ色とクリーム色） ---------- */
+/* ---------- ファミコン本体風（えんじ色とクリーム色） ---------- */
 html.t-fami {
   --bg: #F4EEDC; --surface: #FFFDF5; --line: #A51C1C; --text: #2B1B12; --text-sub: #6B5A4A;
   --accent: #A51C1C; --accent-text: #A51C1C; --accent-soft: rgba(165, 28, 28, 0.1);
