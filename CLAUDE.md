@@ -72,7 +72,7 @@
 - `src/leaflet-core.css` … Leaflet の CSS のうち必要な部分（公開先が外部の CSS を読めないので埋め込む）
 - `data/mapdata.json` … 地図データ（道路・線路・川・公園・畑・町の境界・駅）と販売所46か所
 - `data/stands-guide2025.tsv` … 区のガイドから読み取った98か所の元データ（番号・名前・住所・品目・無人販売機・メモ）
-- `tools/build_pages.py` … **`docs/` を変えたら公開前に必ず実行する。** 自分の CSS/JS の参照に版番号を付け直し（スマホに古いファイルが残らないように）、`docs/simple/`（シンプルな見た目）を `docs/index.html` から作り直す
+- `tools/build_pages.py` … **`docs/` を変えたら公開前に必ず実行する。** 自分の CSS/JS の参照に版番号を付け直し（スマホに古いファイルが残らないように）、`docs/version.txt` を書き（古いページが新しい版に気づいて1回だけ読み直す）、`docs/simple/`（シンプルな見た目）を `docs/index.html` から作り直す
 - `tools/build.py` … `src` と `data` を1つの HTML にまとめて `dist/nerima-stands.html` を作る。旧版（claude.ai）用
 - `tools/build_layers.py` … `data/layers.json`（丁目・番地・道路名・目印）を作る。番地は国土交通省「位置参照情報」（街区レベル、東京都 24.0a）、それ以外は OSM
 - `tools/build_map.py`, `tools/geo.py` … 地図データと住所→緯度経度の作成に使ったスクリプト（元の OSM ダウンロードは残していないので、作り直すときは取り直す）

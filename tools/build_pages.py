@@ -9,6 +9,8 @@ src = (docs / 'index.html').read_text(encoding='utf-8')
 src = re.sub(r'(href|src)="((?:style|themes|common|layers)\.(?:css|js))(?:\?v=[^"]*)?"', rf'\1="\2?v={v}"', src)
 src = re.sub(r'window\.APP_V = "[^"]*";', f'window.APP_V = "{v}";', src)
 (docs / 'index.html').write_text(src, encoding='utf-8')
+# スマホに残った古いページが、新しい版に気づいて読み直すための目印
+(docs / 'version.txt').write_text(v, encoding='utf-8')
 for theme in ('simple',):
     s = re.sub(r'(href|src)="((?:style|themes|common|layers)\.(?:css|js)\?v=[^"]*)"', r'\1="../\2"', src)
     extra = f'window.APP_THEME = "{theme}";' if theme == 'simple' else f'window.APP_COLOR = "{theme}";'
