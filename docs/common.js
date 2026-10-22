@@ -129,7 +129,7 @@ window.StandApp = (() => {
       showSheet('detail',
         head(s.name, s.address),
         el('div', { class: 'meta-line' },
-          el('span', { class: s.unmanned ? 'tag' : 'tag tag-plain' }, s.unmanned ? '無人販売所' : '直売所'),
+          el('span', { class: s.unmanned ? 'tag' : 'tag tag-manned' }, s.unmanned ? '無人販売所' : '直売所'),
           d != null ? el('span', { class: 'near-dist' }, `ここから ${fmtDist(d)}`) : null,
           el('span', { class: 'sub' }, `区のガイド No.${s.no}`)),
         s.note ? el('p', { class: 'note' }, s.note) : null,

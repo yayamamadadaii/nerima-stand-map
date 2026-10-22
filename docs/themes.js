@@ -13,15 +13,13 @@ window.Theme = (() => {
 
   const PAL = {
     K: '#3A2A1A', W: '#FFFDF5', R: '#E43B44', O: '#F7962F', Y: '#F8D040', G: '#4CAF3A', L: '#8FD45A', P: '#7A4FC8',
-    B: '#6B3A1A', N: '#C98A4A', C: '#F6E7C4', S: '#FCD8A8', U: '#2F6FD8', E: '#9A9A9A', H: '#F8B800', V: '#0058F8'
+    B: '#6B3A1A', N: '#C98A4A', C: '#F6E7C4', S: '#FCD8A8', U: '#2F6FD8', E: '#9A9A9A', H: '#F8B800', V: '#0058F8', T: '#D9A55B'
   };
   const SPRITES = {
-    // 無人販売所: 屋根つきの棚に野菜と果物
-    shelf: [
-      '...KKKKKKKKKK...', '..KBBBBBBBBBBK..', '.KBBBBBBBBBBBBK.', 'KKKKKKKKKKKKKKKK',
-      'KNCCCCCCCCCCCCNK', 'KNCRRCOOCLLCPPNK', 'KNKRRKOOKGGKPPNK', 'KNNNNNNNNNNNNNNK',
-      'KNCYYCLLCRRCEENK', 'KNKYYKGGKRRKEENK', 'KNNNNNNNNNNNNNNK', '.KN..........NK.',
-      '.KN..........NK.', '.KK..........KK.'],
+    // 無人販売所: 竹かごに野菜が山盛り、横に値札（2026-10-22 候補④を採用）
+    basket: [
+      '....G..L........', '...KRKKOK...KKKK', '..KRRRKOOK..KWWK', '..KRWRKOOOK.KWKK', '.KLLRRKOOOGKKWWK', '.KLLLLGGGGGK.KK.', 'KKKKKKKKKKKKK.K.',
+      'KTNTNTNTNTNTK.K.', 'KNTNTNTNTNTNK.K.', '.KTNTNTNTNTK..K.', '.KNTNTNTNTNK..K.', '..KKKKKKKKK..KKK'],
     // 直売所: しま模様のテントの下に、お店の人
     tent: [
       '...KKKKKKKKKK...', '..KRRWWRRWWRRK..', '.KRRWWRRWWRRWWK.', 'KRRWWRRWWRRWWRRK',
@@ -55,8 +53,14 @@ window.Theme = (() => {
 
   return {
     name,
-    pin: (s) => html(sprite(s.unmanned ? 'shelf' : 'tent', 2.25)),
-    icon: (s) => html(sprite(s.unmanned ? 'shelf' : 'tent', 1.75)),
+    // ピン: 拡大しているときはドット絵、広く見ているとき（html.far）は色違いの丸（themes.css で切り替え）
+    pin: (s) => {
+      const w = document.createElement('span');
+      w.className = 'pin-art';
+      w.innerHTML = sprite(s.unmanned ? 'basket' : 'tent', 2.25) + '<span class="pin-dot"></span>';
+      return w;
+    },
+    icon: (s) => html(sprite(s.unmanned ? 'basket' : 'tent', 1.75)),
     me: () => {
       const d = document.createElement('div');
       d.className = 'me me-px';

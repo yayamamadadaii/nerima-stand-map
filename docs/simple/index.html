@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#2C2C2E" media="(prefers-color-scheme: dark)">
 <title>大泉学園無人販売所</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script>window.APP_V = "202610221826"; window.APP_BASE = "../"; window.APP_THEME = "simple";</script>
+<script>window.APP_V = "202610221837"; window.APP_BASE = "../"; window.APP_THEME = "simple";</script>
 <script>
   // GitHub Pages はページを最大10分スマホに残すので、新しい版が出ていたら1回だけ読み直す
   fetch((window.APP_BASE || '') + 'version.txt?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(v => {
@@ -18,12 +18,12 @@
     location.reload();
   }).catch(() => {});
 </script>
-<link rel="stylesheet" href="../style.css?v=202610221826">
+<link rel="stylesheet" href="../style.css?v=202610221837">
 <script>
   // 普段はファミコン本体風。simple/ のページか ?theme=simple のときだけシンプルな見た目
   if ((window.APP_THEME || new URLSearchParams(location.search).get('theme') || 'fami') === 'fami') document.documentElement.classList.add('retro', 't-fami');
 </script>
-<link rel="stylesheet" href="../themes.css?v=202610221826">
+<link rel="stylesheet" href="../themes.css?v=202610221837">
 <style>
   .leaflet-container { font-family: var(--font); background: var(--map-land); }
   .lbl { transform: translate(-50%, -50%); }
@@ -40,6 +40,7 @@
   <div class="map-wrap">
     <div id="map" aria-label="大泉周辺の地図"></div>
     <div class="banner" id="banner" hidden></div>
+    <div class="legend" aria-hidden="true"><span><i class="pin-dot"></i>無人販売所</span><span><i class="pin-dot other"></i>直売所</span></div>
     <div class="layer-panel" id="layerPanel" hidden></div>
     <div class="controls">
       <button class="btn btn-secondary btn-round" id="layerBtn" type="button" aria-expanded="false" aria-label="地図に出す情報"></button>
@@ -53,10 +54,10 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="../themes.js?v=202610221826"></script>
-<script src="../common.js?v=202610221826"></script>
-<script src="../roads.js?v=202610221826"></script>
-<script src="../layers.js?v=202610221826"></script>
+<script src="../themes.js?v=202610221837"></script>
+<script src="../common.js?v=202610221837"></script>
+<script src="../roads.js?v=202610221837"></script>
+<script src="../layers.js?v=202610221837"></script>
 <script>
 // Leaflet で真上から見た平らな地図を描く。軽さ優先
 (() => {
@@ -102,7 +103,11 @@
       add(major, () => ({ ...R, color: css('--map-road'), weight: 5 + zw() * 3 }));
       add(D.rail, () => ({ color: css('--map-rail'), weight: 2 + zw() * 0.5 }));
       add(D.rail, () => ({ color: css('--map-land'), weight: 1 + zw() * 0.5, dashArray: '6 6' }));
-      map.on('zoomend', () => styled.forEach(([l, fn]) => l.setStyle(fn())));
+      // 広く見ているときはピンが重なるので、ドット絵ではなく色違いの丸にする（themes.css）
+      const FAR_Z = 15;
+      const setFar = () => document.documentElement.classList.toggle('far', map.getZoom() < FAR_Z);
+      map.on('zoomend', () => { styled.forEach(([l, fn]) => l.setStyle(fn())); setFar(); });
+      setFar();
 
       const world = [[35.6, 139.4], [35.6, 139.8], [35.9, 139.8], [35.9, 139.4]];
       mask = L.polygon([world, ...towns.map(t => t.rings[0])], { pane: 'mask', interactive: false, stroke: false, fillOpacity: 0.72, fillRule: 'evenodd' }).addTo(map);
