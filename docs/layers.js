@@ -55,7 +55,7 @@ window.MapLayers = (() => {
     document.addEventListener('click', (e) => { if (!panel.hidden && !panel.contains(e.target) && e.target !== btn) { panel.hidden = true; btn.setAttribute('aria-expanded', 'false'); } });
 
     // データ
-    const L0 = await (await fetch('data/layers.json')).json();
+    const L0 = await (await fetch(`${window.APP_BASE || ''}data/layers.json?v=${window.APP_V || ''}`)).json();
     const items = [];
     L0.chome.forEach(([lat, lng, t], i) => items.push({ id: 'c' + i, g: 'addr', lat, lng, text: t, cls: 'lbl-chome', z: 15, prio: 3 }));
     L0.roads.forEach(([lat, lng, t], i) => items.push({ id: 'r' + i, g: 'road', lat, lng, text: t, cls: 'lbl-road', z: 15.5, prio: 4 }));

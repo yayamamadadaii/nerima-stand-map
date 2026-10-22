@@ -26,7 +26,7 @@
 ## 要望メモ（2026-10-22、未着手。だいきが「実装して」と言うまで手を付けない）
 
 1. **ファミコン風のゲーム画面**にする。それに合わせて楽しいアイコンにする— **A/B 試作中（2026-10-22）**
-   - 見比べページ `docs/ab.html`。A = `?theme=rpg`（黒いウィンドウ＋白枠、草原色の地図）、B = `?theme=fami`（えんじ色とクリーム色）
+   - 見比べページ `docs/ab.html`。A = `rpg/`（黒いウィンドウ＋白枠、草原色の地図）、B = `fami/`（えんじ色とクリーム色）。`?theme=` でも切り替わるが、スマホに古い `index.html` が残っていると効かないので別URLにした
    - `docs/themes.js`（ドット絵は文字列で持ち SVG にする）と `docs/themes.css`。フォントは Google Fonts の DotGothic16
    - どちらも OS のライト/ダークには追従しない。地図の線は等倍で描いて拡大（ドット感＋軽さ）
    - 決まったら、選んだ方を通常の見た目にし、もう一方と `?theme` の切り替えを消す
@@ -69,7 +69,8 @@
 - `src/leaflet-core.css` … Leaflet の CSS のうち必要な部分（公開先が外部の CSS を読めないので埋め込む）
 - `data/mapdata.json` … 地図データ（道路・線路・川・公園・畑・町の境界・駅）と販売所46か所
 - `data/stands-guide2025.tsv` … 区のガイドから読み取った98か所の元データ（番号・名前・住所・品目・無人販売機・メモ）
-- `tools/build.py` … `src` と `data` を1つの HTML にまとめて `dist/nerima-stands.html` を作る。公開するのはこのファイル
+- `tools/build_pages.py` … **`docs/` を変えたら公開前に必ず実行する。** 自分の CSS/JS の参照に版番号を付け直し（スマホに古いファイルが残らないように）、`docs/rpg/` と `docs/fami/` を `docs/index.html` から作り直す
+- `tools/build.py` … `src` と `data` を1つの HTML にまとめて `dist/nerima-stands.html` を作る。旧版（claude.ai）用
 - `tools/build_layers.py` … `data/layers.json`（丁目・番地・道路名・目印）を作る。番地は国土交通省「位置参照情報」（街区レベル、東京都 24.0a）、それ以外は OSM
 - `tools/build_map.py`, `tools/geo.py` … 地図データと住所→緯度経度の作成に使ったスクリプト（元の OSM ダウンロードは残していないので、作り直すときは取り直す）
 

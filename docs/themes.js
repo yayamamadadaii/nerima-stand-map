@@ -1,7 +1,8 @@
 // ファミコン風の見た目（試作）。?theme=rpg または ?theme=fami で切り替える。指定がなければ何もしない。
 // ドット絵は文字列で持ち、その場で小さな SVG にする（画像ファイルを増やさない）。
 window.Theme = (() => {
-  const name = new URLSearchParams(location.search).get('theme');
+  // rpg/ と fami/ のページは window.APP_THEME で指定する。?theme= でも切り替えられる
+  const name = window.APP_THEME || new URLSearchParams(location.search).get('theme');
   if (name !== 'rpg' && name !== 'fami') return null;
 
   const root = document.documentElement;
@@ -9,7 +10,7 @@ window.Theme = (() => {
   document.head.insertAdjacentHTML('beforeend',
     '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
     '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap">' +
-    '<link rel="stylesheet" href="themes.css">');
+    `<link rel="stylesheet" href="${window.APP_BASE || ''}themes.css?v=${window.APP_V || ''}">`);
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', name === 'rpg' ? '#000000' : '#A51C1C');
   // 地図の線を等倍で描いて拡大する（ドットが見える。描く量も減って軽くなる）
   if (window.L) L.Browser.retina = false;

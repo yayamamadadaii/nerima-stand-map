@@ -62,7 +62,7 @@ window.StandApp = (() => {
   }
 
   async function start(adapter) {
-    const D = await (await fetch('data/mapdata.json')).json();
+    const D = await (await fetch(`${window.APP_BASE || ''}data/mapdata.json?v=${window.APP_V || ''}`)).json();
     const towns = D.towns.filter(t => t.name !== '西大泉町');
     const stands = D.stands.map(s => ({ ...s, kind: kind(s) }));
     const inArea = (p) => towns.some(t => pointInRing(p, t.rings[0]));
