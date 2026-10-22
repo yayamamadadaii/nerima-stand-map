@@ -7,7 +7,7 @@ window.Theme = (() => {
 
   // クラスと CSS・フォントは、表示のちらつきを防ぐため index.html の head で先に入れている
   document.documentElement.classList.add('retro', 't-' + name);
-  document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', '#A51C1C'));
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', '#F3EBDD'));
   // 地図の線を等倍で描いて拡大する（ドットが見える。描く量も減って軽くなる）
   if (window.L) L.Browser.retina = false;
 
