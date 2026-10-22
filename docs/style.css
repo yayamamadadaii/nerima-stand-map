@@ -106,12 +106,10 @@ h1 { margin: 0; font-size: var(--fs-h3); font-weight: 600; line-height: var(--lh
   font-size: var(--fs-caption); line-height: 1; color: var(--text-sub); pointer-events: none;
   transform: translate(-50%, -50%);
 }
-.lbl-poi { transform: translate(-9px, -50%); }
-.lbl-poi, .lbl-road { background: var(--map-land); border-radius: var(--radius-small); padding: 4px 6px 4px 2px; }
+.lbl-poi, .lbl-road { background: var(--map-land); border-radius: var(--radius-small); padding: 4px 6px; }
 .lbl-road { padding: 4px 6px; font-weight: 600; }
 .lbl-chome { font-weight: 600; color: var(--text); }
 .lbl-blk { font-variant-numeric: tabular-nums; }
-.icon-xs { width: 14px; height: 14px; }
 
 /* 情報レイヤーの切り替え */
 .layer-panel {

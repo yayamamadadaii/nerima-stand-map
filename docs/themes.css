@@ -66,10 +66,14 @@ html.t-fami .lbl, html.t-fami .lbl2 {
   text-shadow: -1px -1px 0 #FFFDF5, 0 -1px 0 #FFFDF5, 1px -1px 0 #FFFDF5, -1px 0 0 #FFFDF5,
                1px 0 0 #FFFDF5, -1px 1px 0 #FFFDF5, 0 1px 0 #FFFDF5, 1px 1px 0 #FFFDF5, 0 0 3px #FFFDF5;
 }
-html.t-fami .lbl2 .icon { filter: drop-shadow(0 0 1px #FFFDF5) drop-shadow(0 0 1px #FFFDF5); }
 html.t-fami .lbl-st { color: #1A1A1A; font-size: var(--fs-small); font-weight: 700; }
 html.t-fami .lbl-town { color: #9E1B22; font-size: var(--fs-small); font-weight: 700; }
+/* 目印は種類ごとに文字の色をやんわり変える（Googleマップ参照）。アイコンは付けない */
 html.t-fami .lbl-poi { color: #3A3028; font-weight: 600; }
+html.t-fami .k-park { color: #3F7A33; }
+html.t-fami .k-school, html.t-fami .k-kinder, html.t-fami .k-shrine { color: #7A5A36; }
+html.t-fami .k-post, html.t-fami .k-police, html.t-fami .k-fire, html.t-fami .k-public { color: #4E5F80; }
+html.t-fami .k-conv, html.t-fami .k-super { color: #A8541E; }
 html.t-fami .lbl-road { color: #6B5A4A; font-weight: 600; }
 html.t-fami .lbl-chome { color: #1A1A1A; font-weight: 600; }
 html.t-fami .lbl-blk { color: #6B5A4A; }
