@@ -1,4 +1,4 @@
-// A/B 共通: データ読み込み、画面（見出し・シート・一覧）、現在地、近づくと反応、デモ歩行。
+// A/B 共通: データ読み込み、画面（見出し・シート・一覧）、現在地、近づくと反応。
 // 地図ライブラリごとの違いは adapter に閉じ込める（a/index.html = Leaflet、b/index.html = MapLibre）。
 window.StandApp = (() => {
   const NEAR_M = 60;          // この距離まで近づいたら「すぐ近く」を出す
@@ -14,8 +14,6 @@ window.StandApp = (() => {
     x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
     locate: '<line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/>',
     compass: '<path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/><circle cx="12" cy="12" r="10"/>',
-    play: '<polygon points="6 3 20 12 6 21 6 3"/>',
-    stop: '<rect x="5" y="5" width="14" height="14" rx="2"/>'
   };
   function icon(name, cls = '') {
     const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -72,7 +70,7 @@ window.StandApp = (() => {
       filter: 'unmanned', selected: null, sheet: null,
       me: null,            // {lat, lng, acc}
       heading: null,       // 度。北=0
-      follow: false, watching: false, demo: null, nearNo: null
+      follow: false, watching: false, nearNo: null
     };
     try { const f = localStorage.getItem('filter'); if (f === 'all' || f === 'unmanned') st.filter = f; } catch (e) {}
     const visible = (s) => st.filter === 'all' || s.unmanned;
@@ -144,7 +142,7 @@ window.StandApp = (() => {
       showSheet('detail',
         head(s.name, s.address),
         el('div', { class: 'meta-line' },
-          el('span', { class: s.unmanned ? 'tag' : 'tag tag-plain' }, s.unmanned ? '無人販売機あり' : '直売所'),
+          el('span', { class: s.unmanned ? 'tag' : 'tag tag-plain' }, s.unmanned ? '無人販売所' : '直売所'),
           d != null ? el('span', { class: 'near-dist' }, `ここから ${fmtDist(d)}`) : null,
           el('span', { class: 'sub' }, `区のガイド No.${s.no}`)),
         s.note ? el('p', { class: 'note' }, s.note) : null,
@@ -169,10 +167,9 @@ window.StandApp = (() => {
     }
 
     // ---------- 現在地 ----------
-    const locBtn = $('locBtn'), compBtn = $('compBtn'), demoBtn = $('demoBtn');
+    const locBtn = $('locBtn'), compBtn = $('compBtn');
     locBtn.replaceChildren(icon('locate'));
     compBtn.replaceChildren(icon('compass'));
-    demoBtn.replaceChildren(icon('play'));
 
     function banner(msg, action) {
       const b = $('banner');
@@ -202,7 +199,6 @@ window.StandApp = (() => {
       banner('現在地を探しています…');
       navigator.geolocation.watchPosition(
         (pos) => {
-          if (st.demo) return;
           const p = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy };
           if (st.heading == null && pos.coords.heading != null && !isNaN(pos.coords.heading) && pos.coords.speed > 0.5) setHeading(pos.coords.heading, true);
           const first = !st.me;
@@ -215,7 +211,7 @@ window.StandApp = (() => {
         },
         { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
     }
-    locBtn.onclick = () => { stopDemo(); startWatch(); setFollow(true); };
+    locBtn.onclick = () => { startWatch(); setFollow(true); };
 
     // 向き
     let gpsHeading = false;
@@ -279,42 +275,6 @@ window.StandApp = (() => {
       card.onclick = () => openDetail(best.s.no);
       card.hidden = false;
     }
-
-    // ---------- デモ歩行（机の上で試す用） ----------
-    function stopDemo() {
-      if (!st.demo) return;
-      clearInterval(st.demo); st.demo = null;
-      demoBtn.replaceChildren(icon('play')); demoBtn.setAttribute('aria-pressed', 'false');
-      demoBtn.setAttribute('aria-label', 'デモ歩行');
-    }
-    demoBtn.onclick = () => {
-      if (st.demo) { stopDemo(); return; }
-      // 大泉学園駅から、無人販売機のある販売所を近い順に3か所めぐる
-      const station = D.stations.find(s => s.name === '大泉学園') || D.stations[0];
-      let cur = { lat: station.p[0], lng: station.p[1] };
-      const route = [cur];
-      const pool = stands.filter(s => s.unmanned);
-      for (let i = 0; i < 3; i++) {
-        pool.sort((a, b) => distM(cur, a) - distM(cur, b));
-        cur = pool.shift(); route.push({ lat: cur.lat, lng: cur.lng });
-      }
-      let seg = 0, t = 0;
-      const STEP = 12;   // 1回で進む距離(m)。実際の歩く速さの約10倍
-      demoBtn.replaceChildren(icon('stop')); demoBtn.setAttribute('aria-pressed', 'true');
-      demoBtn.setAttribute('aria-label', 'デモ歩行を止める');
-      setFollow(true);
-      st.demo = setInterval(() => {
-        const a = route[seg], b = route[seg + 1];
-        if (!b) { stopDemo(); return; }
-        const len = distM(a, b);
-        t += STEP / Math.max(len, 1);
-        if (t >= 1) { seg++; t = 0; return; }
-        const p = { lat: a.lat + (b.lat - a.lat) * t, lng: a.lng + (b.lng - a.lng) * t, acc: 5 };
-        const h = (Math.atan2((b.lng - a.lng) * Math.cos(a.lat * Math.PI / 180), b.lat - a.lat) * 180 / Math.PI + 360) % 360;
-        setHeading(Math.round(h), true);
-        updateMe(p);
-      }, 400);
-    };
 
     // テーマ切り替え
     matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => adapter.restyle());
