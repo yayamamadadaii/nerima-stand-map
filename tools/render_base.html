@@ -1,0 +1,36 @@
+<!doctype html>
+<!-- AI に渡す元の地図画像を作るページ（公開しない。手元のサーバーで開く）
+     使い方: docs/ を配信して docs/emap/render.html にこのファイルを、docs/emap/render_bld.json に建物の形を置き、
+     render.html?lng=139.5866&lat=35.7520 を 768×1024・1.5倍で開いて画面を撮る。四隅の位置はページのタイトルに出る -->
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>html,body,#map{height:100%;margin:0}</style></head>
+<body><div id="map"></div>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+(async () => {
+  const q = new URLSearchParams(location.search);
+  const [M, Sm, B] = await Promise.all(['../data/mapdata.json', '../data/small.json', 'render_bld.json'].map(u => fetch(u).then(r => r.json())));
+  const ll = (p) => [p[1], p[0]];
+  const lines = (l) => ({ type: 'FeatureCollection', features: l.map(c => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: c.map(ll) } })) });
+  const polys = (l) => ({ type: 'FeatureCollection', features: l.filter(c => c.length > 3).map(c => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [c.map(ll)] } })) });
+  const w = (a, b) => ['interpolate', ['linear'], ['zoom'], 14, a, 18, b];
+  const R = { 'line-cap': 'round', 'line-join': 'round' };
+  const src = { farm: polys(M.farm), park: polys(M.park), water: polys(M.water), river: lines(M.river), bld: polys(B),
+    minor: lines(M.minor.concat(Sm.lane)), mid: lines(M.mid), major: lines(M.major.concat(M.motorway)), path: lines(Sm.path), rail: lines(M.rail) };
+  const L = [{ id: 'bg', type: 'background', paint: { 'background-color': '#EFE6D2' } },
+    { id: 'farm', type: 'fill', source: 'farm', paint: { 'fill-color': '#D6DDA8' } }, { id: 'park', type: 'fill', source: 'park', paint: { 'fill-color': '#C3D99B' } },
+    { id: 'water', type: 'fill', source: 'water', paint: { 'fill-color': '#9CC4E4' } }, { id: 'bld', type: 'fill', source: 'bld', paint: { 'fill-color': '#D9CCB0' } },
+    { id: 'river', type: 'line', source: 'river', paint: { 'line-color': '#9CC4E4', 'line-width': w(3, 8) } },
+    { id: 'path', type: 'line', source: 'path', paint: { 'line-color': '#CDBB98', 'line-width': w(1, 2), 'line-dasharray': [2, 3] } }];
+  for (const [id, a, b, c] of [['minor', 3, 11, '#CDBB98'], ['mid', 5, 14, '#CDBB98'], ['major', 8, 20, '#B39B70']]) L.push({ id: id + '-c', type: 'line', source: id, layout: R, paint: { 'line-color': c, 'line-width': w(a, b) } });
+  for (const [id, a, b] of [['minor', 1.5, 9], ['mid', 3.5, 12], ['major', 6, 17]]) L.push({ id, type: 'line', source: id, layout: R, paint: { 'line-color': '#FFFDF5', 'line-width': w(a, b) } });
+  L.push({ id: 'rail', type: 'line', source: 'rail', paint: { 'line-color': '#5A4A3A', 'line-width': w(3, 6) } }, { id: 'rail-d', type: 'line', source: 'rail', paint: { 'line-color': '#FFFDF5', 'line-width': w(1.5, 3.5), 'line-dasharray': [2, 2] } });
+  const map = new maplibregl.Map({ container: 'map', style: { version: 8, sources: Object.fromEntries(Object.entries(src).map(([k, d]) => [k, { type: 'geojson', data: d }])), layers: L },
+    center: [+q.get('lng'), +q.get('lat')], zoom: 16.2, attributionControl: false, preserveDrawingBuffer: true, fadeDuration: 0 });
+  map.once('idle', () => {
+    const c = map.getContainer(), W = c.clientWidth, H = c.clientHeight;
+    document.title = 'CORNERS ' + JSON.stringify([[0, 0], [W, 0], [W, H], [0, H]].map(p => { const g = map.unproject(p); return [+g.lng.toFixed(6), +g.lat.toFixed(6)]; }));
+  });
+})();
+</script></body></html>

@@ -71,7 +71,7 @@
         <button type="button" data-img="ai.jpg?v=1">手描き</button><button type="button" data-img="ai2.jpg?v=1">ドット</button><button type="button" data-img="ai3.jpg?v=1">ドット強</button>
       </div>
       <div class="seg seg-sm" role="group" aria-label="12色に減らした絵">
-        <button type="button" data-img="px2_4.png?v=2">ドット 12色</button><button type="button" data-img="px3_4.png?v=2" aria-pressed="true">ドット強 12色</button><button type="button" data-img="px3_6.png?v=2">12色 粗め</button>
+        <button type="button" data-img="px2_4.png?v=2">ドット12色</button><button type="button" data-img="px3_4.png?v=2" aria-pressed="true">強12色</button><button type="button" data-img="px3_6.png?v=2">粗め</button><button type="button" data-img="tiles">4枚</button>
       </div>
     </div>
     <label class="slider" id="sliderRow" hidden>絵の濃さ <input id="op" type="range" min="0" max="100" value="50"></label>
@@ -83,9 +83,11 @@
 (async () => {
   const q = new URLSearchParams(location.search);
   if (q.has('render')) document.body.classList.add('render');
-  const [D, B, X] = await Promise.all([fetch('data.json?v=3').then(r => r.json()), fetch('buildings.json?v=1').then(r => r.json()), fetch('extra.json?v=1').then(r => r.json())]);
+  const [D, B, X] = await Promise.all([fetch('data.json?v=4').then(r => r.json()), fetch('buildings.json?v=1').then(r => r.json()), fetch('extra.json?v=1').then(r => r.json())]);
   let AI = null, AIIMG = 'px3_4.png?v=2';
   try { AI = await (await fetch('ai.json?v=' + Date.now())).json(); } catch (e) {}
+  let TILES = [];
+  try { TILES = (await (await fetch('tiles.json?v=' + Date.now())).json()).tiles; } catch (e) {}
   const ll = (p) => [p[1], p[0]];
   const lines = (list) => ({ type: 'FeatureCollection', features: list.map(c => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: c.map(ll) } })) });
   const polys = (list) => ({ type: 'FeatureCollection', features: list.filter(c => c.length > 3).map((c, i) => ({ type: 'Feature', properties: { n: i % 4 }, geometry: { type: 'Polygon', coordinates: [c.map(ll)] } })) });
@@ -209,10 +211,15 @@
     if (!plain) L.push({ id: 'trees', type: 'symbol', source: 'trees', minzoom: 14.5, layout: { 'icon-image': ['concat', 'tree', ['to-string', ['get', 'v']]], 'icon-size': ['interpolate', ['linear'], ['zoom'], 14, ['*', ['get', 'r'], 0.35], 18, ['*', ['get', 'r'], 1.2]], 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
     // ② AI で描いた絵を、四隅を実際の位置に合わせて重ねる
     if (v === 'ai' && AI) {
-      src.ai = { type: 'image', url: AIIMG, coordinates: AI.corners };
-      L.push({ id: 'ai', type: 'raster', source: 'ai', paint: { 'raster-opacity': +document.getElementById('op').value / 100, 'raster-resampling': AIIMG.startsWith('px') ? 'nearest' : 'linear' } });
+      // 「4枚」は、隣り合う4枚の絵を並べて重ねる（つなぎ目の確認用）
+      const list = AIIMG === 'tiles' ? TILES : [{ url: AIIMG, corners: AI.corners }];
+      list.forEach((t, i) => {
+        const id = i ? 'ai' + i : 'ai';
+        src[id] = { type: 'image', url: t.url, coordinates: t.corners };
+        L.push({ id, type: 'raster', source: id, paint: { 'raster-opacity': +document.getElementById('op').value / 100, 'raster-resampling': AIIMG === 'tiles' || AIIMG.startsWith('px') ? 'nearest' : 'linear' } });
+      });
     }
-    return { version: 8, sources: Object.fromEntries(Object.entries(src).map(([k, d]) => [k, k === 'ai' ? d : { type: 'geojson', data: d }])), layers: L };
+    return { version: 8, sources: Object.fromEntries(Object.entries(src).map(([k, d]) => [k, k.startsWith('ai') ? d : { type: 'geojson', data: d }])), layers: L };
   }
 
   // ①改: 庭の緑の地面、クリームの道に茶色のふち、家の絵、校庭、庭の木
@@ -332,7 +339,7 @@
   }
   const pick = (sel, attr, val) => document.querySelectorAll(sel).forEach(b => b.setAttribute('aria-pressed', b.dataset[attr] === String(val)));
   document.querySelectorAll('[data-px]').forEach(b => b.onclick = () => { PX = +b.dataset.px; pick('[data-px]', 'px', PX); setDot(true); });
-  document.querySelectorAll('[data-img]').forEach(b => b.onclick = () => { AIIMG = b.dataset.img; pick('[data-img]', 'img', AIIMG); map.getSource('ai')?.updateImage({ url: AIIMG, coordinates: AI.corners }); if (map.getLayer('ai')) map.setPaintProperty('ai', 'raster-resampling', AIIMG.startsWith('px') ? 'nearest' : 'linear'); });
+  document.querySelectorAll('[data-img]').forEach(b => b.onclick = () => { AIIMG = b.dataset.img; pick('[data-img]', 'img', AIIMG); map.setStyle(style('ai')); if (AIIMG === 'tiles') map.jumpTo({ center: [139.590187, 35.748119], zoom: 15.2 }); });
   document.querySelectorAll('[data-col]').forEach(b => b.onclick = () => { COL = b.dataset.col; pick('[data-col]', 'col', COL); map.triggerRepaint(); });
 
   const NOTES = {
@@ -353,7 +360,7 @@
     paperOn(v);
   }
   document.querySelectorAll('.seg [data-v]').forEach(b => b.onclick = () => show(b.dataset.v));
-  document.getElementById('op').oninput = (e) => { if (map.getLayer('ai')) map.setPaintProperty('ai', 'raster-opacity', +e.target.value / 100); };
+  document.getElementById('op').oninput = (e) => { for (const id of ['ai', 'ai1', 'ai2', 'ai3']) if (map.getLayer(id)) map.setPaintProperty(id, 'raster-opacity', +e.target.value / 100); };
   note.textContent = NOTES.ai;
   document.querySelector('.app').style.position = 'relative'; document.getElementById('map').style.position = 'relative'; document.getElementById('map').append(window.__paper);
   const paperOn = (v) => { window.__paper.hidden = v !== 'draw2'; };

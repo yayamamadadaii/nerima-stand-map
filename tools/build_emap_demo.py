@@ -1,8 +1,8 @@
 # 絵地図の見本（docs/emap/）用のデータを作る。見本が終わったら消す
-# usage: python3 build_emap_demo.py <osm_buildings_center.json> <docs_dir>
+# usage: python3 build_emap_demo.py <osm_buildings_center.json> <docs_dir> [S W N E]
 import json, sys, collections, random
 bld_path, docs = sys.argv[1:3]
-S, W, N, E = 35.7480, 139.5805, 35.7615, 139.5930
+S, W, N, E = map(float, sys.argv[3:7]) if len(sys.argv) > 6 else (35.7480, 139.5805, 35.7615, 139.5930)
 inb = lambda p: S - 0.001 <= p[0] <= N + 0.001 and W - 0.001 <= p[1] <= E + 0.001
 M = json.load(open(docs + '/data/mapdata.json', encoding='utf-8'))
 L = json.load(open(docs + '/data/layers.json', encoding='utf-8'))
