@@ -68,10 +68,10 @@
     </div>
     <div class="dotrow" id="aiRow" hidden>
       <div class="seg seg-sm" role="group" aria-label="AIの絵">
-        <button type="button" data-img="ai.jpg?v=1">手描き風</button><button type="button" data-img="ai2.jpg?v=1" aria-pressed="true">ドット絵風</button>
+        <button type="button" data-img="ai.jpg?v=1">手描き</button><button type="button" data-img="ai2.jpg?v=1">ドット</button><button type="button" data-img="ai3.jpg?v=1">ドット強</button>
       </div>
-      <div class="seg seg-sm" role="group" aria-label="仕上げ">
-        <button type="button" data-fx="none" aria-pressed="true">そのまま</button><button type="button" data-fx="dot">さらにドット化</button>
+      <div class="seg seg-sm" role="group" aria-label="12色に減らした絵">
+        <button type="button" data-img="px2_4.png?v=1">ドット 12色</button><button type="button" data-img="px3_4.png?v=1" aria-pressed="true">ドット強 12色</button><button type="button" data-img="px3_6.png?v=1">12色 粗め</button>
       </div>
     </div>
     <label class="slider" id="sliderRow" hidden>絵の濃さ <input id="op" type="range" min="0" max="100" value="50"></label>
@@ -84,7 +84,7 @@
   const q = new URLSearchParams(location.search);
   if (q.has('render')) document.body.classList.add('render');
   const [D, B, X] = await Promise.all([fetch('data.json?v=3').then(r => r.json()), fetch('buildings.json?v=1').then(r => r.json()), fetch('extra.json?v=1').then(r => r.json())]);
-  let AI = null, AIIMG = 'ai2.jpg?v=1', AIFX = 'none';
+  let AI = null, AIIMG = 'px3_4.png?v=1';
   try { AI = await (await fetch('ai.json?v=' + Date.now())).json(); } catch (e) {}
   const ll = (p) => [p[1], p[0]];
   const lines = (list) => ({ type: 'FeatureCollection', features: list.map(c => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: c.map(ll) } })) });
@@ -210,7 +210,7 @@
     // ② AI で描いた絵を、四隅を実際の位置に合わせて重ねる
     if (v === 'ai' && AI) {
       src.ai = { type: 'image', url: AIIMG, coordinates: AI.corners };
-      L.push({ id: 'ai', type: 'raster', source: 'ai', paint: { 'raster-opacity': +document.getElementById('op').value / 100, 'raster-resampling': 'linear' } });
+      L.push({ id: 'ai', type: 'raster', source: 'ai', paint: { 'raster-opacity': +document.getElementById('op').value / 100, 'raster-resampling': AIIMG.startsWith('px') ? 'nearest' : 'linear' } });
     }
     return { version: 8, sources: Object.fromEntries(Object.entries(src).map(([k, d]) => [k, k === 'ai' ? d : { type: 'geojson', data: d }])), layers: L };
   }
@@ -332,8 +332,7 @@
   }
   const pick = (sel, attr, val) => document.querySelectorAll(sel).forEach(b => b.setAttribute('aria-pressed', b.dataset[attr] === String(val)));
   document.querySelectorAll('[data-px]').forEach(b => b.onclick = () => { PX = +b.dataset.px; pick('[data-px]', 'px', PX); setDot(true); });
-  document.querySelectorAll('[data-img]').forEach(b => b.onclick = () => { AIIMG = b.dataset.img; pick('[data-img]', 'img', AIIMG); map.getSource('ai')?.updateImage({ url: AIIMG, coordinates: AI.corners }); });
-  document.querySelectorAll('[data-fx]').forEach(b => b.onclick = () => { AIFX = b.dataset.fx; pick('[data-fx]', 'fx', AIFX); setDot(AIFX === 'dot'); });
+  document.querySelectorAll('[data-img]').forEach(b => b.onclick = () => { AIIMG = b.dataset.img; pick('[data-img]', 'img', AIIMG); map.getSource('ai')?.updateImage({ url: AIIMG, coordinates: AI.corners }); if (map.getLayer('ai')) map.setPaintProperty('ai', 'raster-resampling', AIIMG.startsWith('px') ? 'nearest' : 'linear'); });
   document.querySelectorAll('[data-col]').forEach(b => b.onclick = () => { COL = b.dataset.col; pick('[data-col]', 'col', COL); map.triggerRepaint(); });
 
   const NOTES = {
@@ -341,7 +340,7 @@
     dot: '①ドット。① の地図をわざと粗い解像度で描き、ぼかさずに拡大しています。「粗さ」でドットの大きさ、「色」で16色に減らす処理と網目模様（昔のゲーム機風の中間色）を切り替えられます。ピンと駅名はドット化しません。',
     draw2: '①改 AI の絵に寄せて描き込む。建物の位置と大きさに合わせて家の絵を描き、家のすき間は庭の緑、道はクリームに茶色のふち、校庭や運動場も描きました。紙のざらつきをうっすら重ねています。データから自動で描くので軽く、区全体にも広げられます。',
     draw: '① 建物を地図に描き込む。実際の建物の形に屋根の色と少しの厚みを付けて「上から見た家並み」に。畑はパッチワーク、公園は上から見た木。データから自動で描くので区全体にも広げられます。',
-    ai: AI ? '② 今の地図の上に、AI が描き直した絵を重ねています（最初は濃さ50%）。絵は「手描き風」と「ドット絵風」を選べ、「さらにドット化」で仕上げにドット化の処理も掛けられます。' : '② の絵はまだ用意できていません。'
+    ai: AI ? '② 今の地図の上に、AI が描き直した絵を重ねています（最初は濃さ50%）。絵の種類を下のボタンで切り替えられます。ドット化は前もって絵に掛けてあるので、動かしてもチカチカしません。' : '② の絵はまだ用意できていません。'
   };
   const note = document.getElementById('note');
   function show(v) {
@@ -349,7 +348,7 @@
     note.textContent = NOTES[v];
     map.setStyle(style(v === 'dot' ? 'draw' : v));
     document.getElementById('aiRow').hidden = v !== 'ai';
-    setDot(v === 'dot' || (v === 'ai' && AIFX === 'dot'));
+    setDot(v === 'dot');
     document.getElementById('sliderRow').hidden = v !== 'ai';
     paperOn(v);
   }
