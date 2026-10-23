@@ -8,7 +8,8 @@
 <title>絵地図の見本</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <style>
-  /* 絵地図のタッチを見比べる見本（決まったら消す）。大泉学園町2〜3丁目のあたりだけ */
+  /* デフォルメした絵地図の見本（決まったら消す）。大泉学園駅〜大泉学園町2丁目のあたりだけ。
+     道と販売所の位置は実際どおり。建物の形は描かず、町の地面に家の絵をまばらに置く */
   html, body { height: 100%; margin: 0; }
   body {
     font-family: "Helvetica Neue", Helvetica, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
@@ -28,10 +29,10 @@
   .seg button[aria-pressed="true"] { background: #D4A944; color: #1A1A1A; }
   .note { margin: 0; font-size: 13px; color: #4A4038; min-height: 2.6em; }
   #map { flex: 1; min-height: 0; }
-  .pin { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; }
-  .pin svg { display: block; }
+  .pin { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+  .pin canvas { display: block; image-rendering: pixelated; }
   .lbl {
-    white-space: nowrap; font-size: 13px; font-weight: 700; color: #1A1A1A; transform: translate(-50%, -50%); width: max-content;
+    white-space: nowrap; font-size: 14px; font-weight: 700; color: #1A1A1A; width: max-content; transform: translate(-50%, 18px);
     text-shadow: -1px -1px 0 #FFFDF5, 1px -1px 0 #FFFDF5, -1px 1px 0 #FFFDF5, 1px 1px 0 #FFFDF5, 0 0 3px #FFFDF5;
   }
 </style>
@@ -39,7 +40,7 @@
 <body>
 <div class="app">
   <header class="top">
-    <h1>絵地図のタッチ 見本</h1>
+    <h1>デフォルメした絵地図 見本</h1>
     <div class="seg" role="group" aria-label="タッチ">
       <button type="button" data-v="now" aria-pressed="false">今</button>
       <button type="button" data-v="a" aria-pressed="true">A ドット絵</button>
@@ -53,161 +54,176 @@
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script>
 (async () => {
-  const D = await (await fetch('data.json')).json();
+  const D = await (await fetch('data.json?v=2')).json();
   const ll = (p) => [p[1], p[0]];
   const lines = (list) => ({ type: 'FeatureCollection', features: list.map(c => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: c.map(ll) } })) });
   const polys = (list) => ({ type: 'FeatureCollection', features: list.filter(c => c.length > 3).map(c => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [c.map(ll)] } })) });
-  const bld = { type: 'FeatureCollection', features: D.buildings.filter(b => b[1].length > 3).map(([k, c]) => ({ type: 'Feature', properties: { k }, geometry: { type: 'Polygon', coordinates: [c.map(ll)] } })) };
   const pts = (list) => ({ type: 'FeatureCollection', features: list.map(p => ({ type: 'Feature', properties: p.props || {}, geometry: { type: 'Point', coordinates: [p.lng, p.lat] } })) });
 
-  // 公園の中に木を置く場所（毎回同じになるよう決まった乱数で）
+  // 公園の中の木（毎回同じ場所になるよう決まった乱数で）
   let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const inside = (p, r) => { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const [yi, xi] = r[i], [yj, xj] = r[j]; if ((yi > p[0]) !== (yj > p[0]) && p[1] < (xj - xi) * (p[0] - yi) / (yj - yi) + xi) c = !c; } return c; };
   const trees = [];
   for (const r of D.park) {
     const la = r.map(p => p[0]), lo = r.map(p => p[1]);
     const s = Math.min(...la), n = Math.max(...la), w = Math.min(...lo), e = Math.max(...lo);
-    const area = (n - s) * 111000 * (e - w) * 90000, want = Math.min(40, Math.max(1, Math.floor(area / 350)));
-    for (let i = 0, t = 0; i < want && t < want * 10; t++) { const p = [s + (n - s) * rnd(), w + (e - w) * rnd()]; if (inside(p, r)) { trees.push({ lat: p[0], lng: p[1], props: { v: Math.floor(rnd() * 3) } }); i++; } }
+    const area = (n - s) * 111000 * (e - w) * 90000, want = Math.min(30, Math.max(1, Math.floor(area / 450)));
+    for (let i = 0, t = 0; i < want && t < want * 10; t++) { const p = [s + (n - s) * rnd(), w + (e - w) * rnd()]; if (inside(p, r)) { trees.push({ lat: p[0], lng: p[1], props: { i: 'tree' + Math.floor(rnd() * 3) } }); i++; } }
   }
-  // 目印の種類 → 絵の種類
-  const ICON_OF = { school: 'school', kinder: 'school', post: 'post', police: 'police', fire: 'police', public: 'public', shrine: 'shrine', park: 'park', conv: 'shop', super: 'shop', drug: 'drug', variety: 'shop', food: 'food', bank: 'bank', fuel: 'fuel' };
-  const pois = D.pois.filter(p => ICON_OF[p[2]] && p[2] !== 'park').map(p => ({ lat: p[0], lng: p[1], props: { i: ICON_OF[p[2]] } }));
+  const houses = D.houses.map(h => ({ lat: h[0], lng: h[1], props: { i: h[2] } }));
+  // 目印は、絵にすると分かりやすいものだけ大きく描く
+  const MARK = { school: 'school', shrine: 'shrine', super: 'shop', conv: 'shop2', post: 'post', drug: 'shop3', food: 'shop4' };
+  const marks = D.pois.filter(p => MARK[p[2]]).map(p => ({ lat: p[0], lng: p[1], props: { i: MARK[p[2]], r: { school: 1, shrine: 2, super: 3, post: 4 }[p[2]] || 5 } }))
+    .concat(D.stations.map(s => ({ lat: s.p[0], lng: s.p[1], props: { i: 'station', r: 0 } })));
 
-  // ---------- 絵を描く（キャンバスで作って地図に渡す） ----------
-  function canvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d')]; }
+  // ---------- 絵の部品（16マスの方眼で形を決め、ドット絵とイラストの両方で描く） ----------
+  const R = (x, y, w, h, c) => ({ t: 'r', x, y, w, h, c });
+  const T = (pts, c) => ({ t: 't', pts, c });
+  const C = (x, y, r, c) => ({ t: 'c', x, y, r, c });
+  const SHAPES = {
+    house0: (P) => [T([[0.5, 8], [8, 1.5], [15.5, 8]], P.roof1), R(2.5, 8, 11, 7, P.wall), R(7, 10.5, 2.4, 4.5, P.door), R(3.8, 9.8, 2, 2, P.glass), R(10.4, 9.8, 2, 2, P.glass)],
+    house1: (P) => [T([[0.5, 8], [8, 1.5], [15.5, 8]], P.roof2), R(2.5, 8, 11, 7, P.wall), R(7, 10.5, 2.4, 4.5, P.door), R(3.8, 9.8, 2, 2, P.glass), R(10.4, 9.8, 2, 2, P.glass)],
+    house2: (P) => [T([[1.5, 9], [8, 3], [14.5, 9]], P.roof3), R(3, 9, 10, 6, P.wall2), R(6.8, 11, 2.4, 4, P.door), R(4.2, 10.5, 1.8, 1.8, P.glass), R(10.2, 10.5, 1.8, 1.8, P.glass)],
+    apt: (P) => [R(2.5, 1.5, 11, 13.5, P.apt), R(2.5, 1.5, 11, 1.6, P.aptRoof), ...[4.5, 9.2].flatMap(x => [4.5, 8, 11.5].map(y => R(x, y, 2.3, 2, P.glass)))],
+    tree0: (P) => [R(7, 10, 2, 5.5, P.trunk), C(8, 7, 6, P.leaf1), C(6, 5, 2, P.leafHi)],
+    tree1: (P) => [R(7, 10, 2, 5.5, P.trunk), C(8, 7, 6, P.leaf2), C(6, 5, 2, P.leafHi)],
+    tree2: (P) => [R(7, 9, 2, 6.5, P.trunk), T([[2, 11], [8, 1], [14, 11]], P.leaf3)],
+    school: (P) => [R(12.2, 0.5, 0.8, 5, P.pole), R(13, 0.5, 2.6, 1.8, P.flag), T([[0, 7], [8, 3], [16, 7]], P.schoolRoof), R(1, 7, 14, 8.5, P.schoolWall), C(8, 9.2, 1.6, P.clock),
+      ...[2.5, 5, 10, 12.5].map(x => R(x, 11.5, 1.6, 1.6, P.glass)), R(7, 12, 2, 3.5, P.door)],
+    station: (P) => [R(0, 5, 16, 2, P.stationRoof), T([[3, 5], [8, 1], [13, 5]], P.stationRoof), R(1, 7, 14, 7.5, P.stationWall), C(8, 3.8, 1.2, P.clock),
+      ...[2.5, 5.5, 10.5].map(x => R(x, 8.5, 2, 2.2, P.glass)), R(7.4, 9.5, 1.8, 5, P.door), R(0, 14.5, 16, 1.5, P.rail)],
+    shrine: (P) => [R(0.5, 3, 15, 1.8, P.torii), R(2.5, 6.2, 11, 1.2, P.torii), R(4, 3.5, 1.7, 12, P.torii), R(10.3, 3.5, 1.7, 12, P.torii)],
+    shop: (P) => [R(2, 7.5, 12, 7.5, P.wall), ...[1, 4, 7, 10, 13].map((x, i) => R(x, 4.5, 3, 3.2, i % 2 ? P.awningB : P.awning1)), R(4, 9.5, 8, 3, P.glass), R(7, 12.5, 2, 2.5, P.door)],
+    shop2: (P) => [R(2, 7.5, 12, 7.5, P.wall), ...[1, 4, 7, 10, 13].map((x, i) => R(x, 4.5, 3, 3.2, i % 2 ? P.awningB : P.awning2)), R(4, 9.5, 8, 3, P.glass), R(7, 12.5, 2, 2.5, P.door)],
+    shop3: (P) => [R(2, 7.5, 12, 7.5, P.wall), ...[1, 4, 7, 10, 13].map((x, i) => R(x, 4.5, 3, 3.2, i % 2 ? P.awningB : P.awning3)), R(4, 9.5, 8, 3, P.glass), R(7, 12.5, 2, 2.5, P.door)],
+    shop4: (P) => [R(2, 7.5, 12, 7.5, P.wall), ...[1, 4, 7, 10, 13].map((x, i) => R(x, 4.5, 3, 3.2, i % 2 ? P.awningB : P.awning4)), R(4, 9.5, 8, 3, P.glass), R(7, 12.5, 2, 2.5, P.door)],
+    post: (P) => [R(5, 3, 6, 11, P.postRed), R(5, 3, 6, 1.6, P.postTop), R(6.4, 6, 3.2, 0.8, P.door), R(7.4, 14, 1.2, 1.8, P.door)]
+  };
+  const hit = (p, x, y) => p.t === 'r' ? (x >= p.x && x < p.x + p.w && y >= p.y && y < p.y + p.h)
+    : p.t === 'c' ? ((x - p.x) ** 2 + (y - p.y) ** 2 <= p.r * p.r)
+    : (() => { const [[ax, ay], [bx, by], [cx, cy]] = p.pts; const d = (bx - ax) * (cy - ay) - (cx - ax) * (by - ay);
+      const u = ((bx - x) * (cy - y) - (cx - x) * (by - y)) / d, v = ((cx - x) * (ay - y) - (ax - x) * (cy - y)) / d; return u >= 0 && v >= 0 && u + v <= 1; })();
+  // ドット絵: 16マスを1マス1ドットで塗り、外側に1ドットのふちを付ける
+  function drawPixel(shape, P) {
+    const n = 18, grid = Array.from({ length: n }, () => Array(n).fill(null));
+    for (const p of shape) for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (hit(p, x + 0.5, y + 0.5)) grid[y + 1][x + 1] = p.c;
+    const c = document.createElement('canvas'); c.width = c.height = n; const g = c.getContext('2d');
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      if (grid[y][x]) { g.fillStyle = grid[y][x]; g.fillRect(x, y, 1, 1); }
+      else if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => grid[y + dy]?.[x + dx])) { g.fillStyle = P.outline; g.fillRect(x, y, 1, 1); }
+    }
+    return c;
+  }
+  // イラスト: なめらかな形にふち線（B は茶色の線、C は白いふち）
+  function drawSmooth(shape, P, unit = 4) {
+    const pad = 3, c = document.createElement('canvas'); c.width = c.height = 16 * unit + pad * 2; const g = c.getContext('2d');
+    g.translate(pad, pad); g.lineJoin = 'round';
+    const path = (p) => { g.beginPath(); if (p.t === 'r') { const rr = Math.min(p.w, p.h) * unit * 0.18; g.roundRect(p.x * unit, p.y * unit, p.w * unit, p.h * unit, rr); }
+      else if (p.t === 'c') g.arc(p.x * unit, p.y * unit, p.r * unit, 0, Math.PI * 2); else { g.moveTo(p.pts[0][0] * unit, p.pts[0][1] * unit); p.pts.slice(1).forEach(q => g.lineTo(q[0] * unit, q[1] * unit)); g.closePath(); } };
+    if (P.outline) { g.strokeStyle = P.outline; g.lineWidth = P.lw; for (const p of shape) { path(p); g.stroke(); } }
+    for (const p of shape) { path(p); g.fillStyle = p.c; g.fill(); }
+    return c;
+  }
+  function pattern(size, bg, draw) { const c = document.createElement('canvas'); c.width = c.height = size; const g = c.getContext('2d'); g.fillStyle = bg; g.fillRect(0, 0, size, size); draw(g, size); return c; }
   const toImg = (c) => ({ width: c.width, height: c.height, data: new Uint8Array(c.getContext('2d').getImageData(0, 0, c.width, c.height).data.buffer) });
-  function px(rows, pal, scale) {   // ドット絵
-    const [c, g] = canvas(rows[0].length * scale, rows.length * scale);
-    rows.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== '.') { g.fillStyle = pal[ch]; g.fillRect(x * scale, y * scale, scale, scale); } }));
-    return c;
-  }
-  // 地図記号に近い字を丸の中に描く
-  const GLYPH = { school: '文', post: '〒', police: '✕', public: '公', shrine: '⛩', shop: '店', drug: '薬', food: '食', bank: '¥', fuel: 'G' };
-  function badge(i, opt) {
-    const s = opt.size, [c, g] = canvas(s, s);
-    g.fillStyle = opt.bg(i); g.strokeStyle = opt.ring; g.lineWidth = opt.lw;
-    if (opt.square) { g.fillRect(opt.lw, opt.lw, s - 2 * opt.lw, s - 2 * opt.lw); g.strokeRect(opt.lw / 2, opt.lw / 2, s - opt.lw, s - opt.lw); }
-    else { g.beginPath(); g.arc(s / 2, s / 2, s / 2 - opt.lw, 0, Math.PI * 2); g.fill(); g.stroke(); }
-    if (i === 'shrine') {   // 鳥居
-      g.strokeStyle = opt.fg; g.lineWidth = s * 0.08; g.lineCap = 'butt';
-      g.beginPath(); g.moveTo(s * 0.24, s * 0.32); g.lineTo(s * 0.76, s * 0.32); g.moveTo(s * 0.3, s * 0.44); g.lineTo(s * 0.7, s * 0.44);
-      g.moveTo(s * 0.36, s * 0.32); g.lineTo(s * 0.36, s * 0.74); g.moveTo(s * 0.64, s * 0.32); g.lineTo(s * 0.64, s * 0.74); g.stroke();
-    } else {
-      g.fillStyle = opt.fg; g.font = `${opt.weight} ${Math.round(s * 0.52)}px ${opt.font}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.fillText(GLYPH[i], s / 2, s / 2 + s * 0.03);
-    }
-    return c;
-  }
-  function pattern(size, bg, draw) { const [c, g] = canvas(size, size); g.fillStyle = bg; g.fillRect(0, 0, size, size); draw(g, size); return c; }
 
-  // ---------- 3つのタッチ ----------
+  // ---------- タッチごとの色と描き方 ----------
+  const PALS = {
+    a: { outline: '#3A2A1A', roof1: '#E4473C', roof2: '#3C78D8', roof3: '#5BA84A', wall: '#FCE8C8', wall2: '#F8D8A0', door: '#7C4A1E', glass: '#9CD8F8',
+      apt: '#D8D0C0', aptRoof: '#8A7A6A', trunk: '#7C4A1E', leaf1: '#4CAF3A', leaf2: '#3E9A30', leaf3: '#2F8A3A', leafHi: '#8FD45A',
+      pole: '#5A5A5A', flag: '#E4473C', schoolRoof: '#8A4A2A', schoolWall: '#FCE8C8', clock: '#FFFFFF', stationRoof: '#4A5A7A', stationWall: '#F2E2C4', rail: '#5A4A3A',
+      torii: '#E4473C', awning1: '#E4473C', awning2: '#3C9A4A', awning3: '#3CB4A0', awning4: '#F7962F', awningB: '#FFFFFF', postRed: '#E4473C', postTop: '#B8302A' },
+    b: { outline: '#8A6A4A', lw: 3, roof1: '#E8907A', roof2: '#8FB0D8', roof3: '#A8C88A', wall: '#FBF0DC', wall2: '#F6E2C0', door: '#A8825A', glass: '#CFE6F2',
+      apt: '#E6DED0', aptRoof: '#B8A890', trunk: '#A07A52', leaf1: '#94C46A', leaf2: '#7FB55A', leaf3: '#6FA84E', leafHi: '#C2E0A0',
+      pole: '#8A7A6A', flag: '#E8907A', schoolRoof: '#C08A6A', schoolWall: '#FBF0DC', clock: '#FFFFFF', stationRoof: '#8A9AB8', stationWall: '#F6E8D0', rail: '#A08A70',
+      torii: '#E07A6A', awning1: '#E8907A', awning2: '#8FC08A', awning3: '#8FCFC2', awning4: '#F2B47A', awningB: '#FFF8EC', postRed: '#E07A6A', postTop: '#C06050' },
+    c: { outline: '#FFFFFF', lw: 5, roof1: '#F26B5B', roof2: '#5B9BF2', roof3: '#6CC070', wall: '#FFF4E2', wall2: '#FFE7C2', door: '#9C6B48', glass: '#BFE3FA',
+      apt: '#E3E9F2', aptRoof: '#9AA8BE', trunk: '#9C6B48', leaf1: '#5DBB63', leaf2: '#4CAF50', leaf3: '#3E9E5A', leafHi: '#A8E0A8',
+      pole: '#888888', flag: '#F26B5B', schoolRoof: '#E08850', schoolWall: '#FFF4E2', clock: '#FFFFFF', stationRoof: '#5A6E9C', stationWall: '#FFF0DA', rail: '#8A7A6A',
+      torii: '#F05A4A', awning1: '#F26B5B', awning2: '#4CB868', awning3: '#3CBFA8', awning4: '#F59A3C', awningB: '#FFFFFF', postRed: '#F05A4A', postTop: '#C84034' }
+  };
   const V = {
-    now: {
-      note: '今の地図。比べるための基準です。',
-      bg: '#EFE6D2', farm: '#D6DDA8', park: '#C3D99B', water: '#9CC4E4', road: '#FFFDF5', casing: '#CDBB98', major: '#B39B70', lane: '#FFFDF5', path: '#CDBB98',
-      bld: null, trees: false, icons: false
-    },
-    a: {
-      note: 'ドット絵。畑は作物の列、公園はドットの木、建物は黒いふちのブロック。目印は地図記号のドット。ピンやキャラと絵柄がそろいます。',
-      bg: '#E8DCB8', water: '#5BA4E6', road: '#F8F0D8', casing: '#7A5A3A', major: '#5A3A1A', lane: '#F8F0D8', path: '#7A5A3A',
-      farmImg: () => pattern(8, '#9CCB5A', (g) => { g.fillStyle = '#5A9A2A'; for (const y of [1, 5]) for (let x = 0; x < 8; x += 4) g.fillRect(x + (y === 5 ? 2 : 0), y, 2, 2); }),
-      parkImg: () => pattern(8, '#7CC05A', (g) => { g.fillStyle = '#4F9A3A'; g.fillRect(1, 1, 3, 3); g.fillRect(5, 5, 2, 2); }),
-      waterImg: () => pattern(8, '#5BA4E6', (g) => { g.fillStyle = '#CFEAF5'; g.fillRect(1, 2, 3, 1); g.fillRect(5, 6, 2, 1); }),
-      pixelRatio: 0.5,
-      bld: { house: '#F2A65A', apt: '#9CC4E4', pub: '#E46A6A', com: '#F8D040', other: '#D9C6A0', line: '#3A2A1A', lw: 1.5 },
-      trees: true, tree: (v) => px(['..KKKK..', '.KLLGGK.', 'KLLGGGGK', 'KLGGGGGK', 'KGGGGGGK', '.KGGGGK.', '..KBBK..', '...BB...'],
-        { K: '#3A2A1A', L: ['#9AE06A', '#8FD45A', '#7CC05A'][v], G: '#4CAF3A', B: '#7C4A1E' }, 3),
-      icon: (i) => badge(i, { size: 30, bg: () => '#FFFDF5', ring: '#3A2A1A', lw: 3, fg: '#3A2A1A', square: true, weight: 900, font: 'monospace' }),
-      iconPR: 1.4
-    },
-    b: {
-      note: '手描き風。色鉛筆で塗ったようなやわらかい色。建物はうす茶の線を少しずらして2回なぞり、手で描いたような揺れを出しています。木は丸い水彩の木。',
-      bg: '#F6EEDC', water: '#B9DAF0', road: '#FFFDF7', casing: '#C9B590', major: '#A88E62', lane: '#FFFDF7', path: '#C9B590',
-      farmImg: () => pattern(24, '#E3E7B8', (g) => { g.strokeStyle = 'rgba(120,150,60,0.55)'; g.lineWidth = 2; g.lineCap = 'round'; for (let y = 4; y < 24; y += 8) { g.beginPath(); g.moveTo(1, y); g.bezierCurveTo(8, y - 2, 16, y + 2, 23, y); g.stroke(); } }),
-      parkImg: () => pattern(24, '#D3E6B5', (g) => { g.fillStyle = 'rgba(110,160,80,0.25)'; for (const [x, y, r] of [[5, 6, 4], [16, 14, 5], [9, 19, 3]]) { g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); } }),
-      waterImg: () => pattern(24, '#B9DAF0', (g) => { g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = 1.5; for (const y of [7, 17]) { g.beginPath(); g.moveTo(2, y); g.quadraticCurveTo(7, y - 3, 12, y); g.quadraticCurveTo(17, y + 3, 22, y); g.stroke(); } }),
-      pixelRatio: 2,
-      bld: { house: '#F4DCC0', apt: '#DCE6EE', pub: '#F0CFC8', com: '#F4E6B4', other: '#EADFCB', line: '#9A7A5A', lw: 1, sketch: true },
-      trees: true, tree: (v) => { const [c, g] = canvas(44, 52); const col = ['#7FB55A', '#94C46A', '#6FA84E'][v];
-        g.fillStyle = '#8A6A44'; g.fillRect(19, 30, 6, 18);
-        g.fillStyle = col; for (const [x, y, r] of [[22, 20, 15], [13, 25, 10], [31, 25, 10]]) { g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }
-        g.fillStyle = 'rgba(255,255,255,0.25)'; g.beginPath(); g.arc(17, 14, 5, 0, 7); g.fill();
-        g.strokeStyle = 'rgba(70,90,40,0.6)'; g.lineWidth = 1.5; g.beginPath(); g.arc(22, 20, 15, 3.6, 5.9); g.stroke(); return c; },
-      icon: (i) => badge(i, { size: 60, bg: () => '#FFFDF5', ring: '#9A7A5A', lw: 4, fg: '#6A4A2A', weight: 700, font: '"Hiragino Maru Gothic ProN", "Hiragino Sans", sans-serif' }),
-      iconPR: 2.6
-    },
-    c: {
-      note: 'フラットなイラスト（観光マップ風）。建物は種類ごとに色を変え、下に少しずらした濃い色で厚みを出しています。木はまるい木、目印は色付きの丸いマーク。',
-      bg: '#F3EEE2', water: '#8CC8EE', road: '#FFFFFF', casing: '#D8D2C4', major: '#C4BBA8', lane: '#FFFFFF', path: '#D8D2C4',
-      farmImg: () => pattern(16, '#CFE3A0', (g) => { g.fillStyle = '#B5D47E'; g.fillRect(0, 0, 16, 5); g.fillRect(0, 8, 16, 5); }),
-      parkImg: () => pattern(16, '#BFE0A0', () => {}),
-      waterImg: () => pattern(16, '#8CC8EE', () => {}),
-      pixelRatio: 2,
-      bld: { house: '#FBD9B0', apt: '#C9DEF5', pub: '#F7C1C1', com: '#FBE59A', other: '#EAE2D2', line: '#FFFFFF', lw: 1, depth: { house: '#E3B582', apt: '#9CBADF', pub: '#E39A9A', com: '#E8C860', other: '#CFC4AE' } },
-      trees: true, tree: (v) => { const [c, g] = canvas(36, 48); const col = ['#5DBB63', '#4CAF50', '#7CC870'][v];
-        g.fillStyle = '#8D6E4E'; g.fillRect(16, 26, 4, 18); g.fillStyle = col; g.beginPath(); g.arc(18, 17, 14, 0, 7); g.fill();
-        g.fillStyle = 'rgba(255,255,255,0.35)'; g.beginPath(); g.arc(13, 12, 4, 0, 7); g.fill(); return c; },
-      icon: (i) => badge(i, { size: 56, bg: (k) => ({ school: '#5B8DEF', post: '#E5533D', police: '#3D5A99', public: '#7A8CA8', shrine: '#D9534F', shop: '#F0A030', drug: '#3CB4A0', food: '#E7743C', bank: '#6A7FB0', fuel: '#5A6A7A' })[k] || '#888',
-        ring: '#FFFFFF', lw: 4, fg: '#FFFFFF', weight: 700, font: '"Hiragino Sans", sans-serif' }),
-      iconPR: 2.4
-    }
+    now: { note: '今の地図。比べるための基準です。', bg: '#EFE6D2', farm: '#D6DDA8', park: '#C3D99B', water: '#9CC4E4', road: '#FFFDF5', casing: '#CDBB98', major: '#B39B70' },
+    a: { note: 'ドット絵。町は砂色の地面に家のドット絵をまばらに置き、駅・学校・神社・お店は大きめのドット絵に。ピンやキャラと絵柄がそろいます。',
+      bg: '#E8DCB8', park: '#8FD06A', water: '#5BA4E6', road: '#FBF4E0', casing: '#8A6A4A', major: '#6A4A2A',
+      farmImg: () => pattern(8, '#B8D86A', (g) => { g.fillStyle = '#6FA83A'; for (const y of [1, 5]) for (let x = 0; x < 8; x += 4) g.fillRect(x + (y === 5 ? 2 : 0), y, 2, 2); }), pr: 0.5,
+      draw: (k) => drawPixel(SHAPES[k](PALS.a), PALS.a), iconPR: 0.75 },
+    b: { note: '手描き風。やわらかい色に茶色のふち線。家や木は丸みのある絵本のような形です。',
+      bg: '#F6EEDC', park: '#D3E6B5', water: '#B9DAF0', road: '#FFFDF7', casing: '#C9B590', major: '#A88E62',
+      farmImg: () => pattern(24, '#E3E7B8', (g) => { g.strokeStyle = 'rgba(120,150,60,0.55)'; g.lineWidth = 2; g.lineCap = 'round'; for (let y = 4; y < 24; y += 8) { g.beginPath(); g.moveTo(1, y); g.bezierCurveTo(8, y - 2, 16, y + 2, 23, y); g.stroke(); } }), pr: 2,
+      draw: (k) => drawSmooth(SHAPES[k](PALS.b), PALS.b), iconPR: 2.6 },
+    c: { note: 'フラットなイラスト（観光マップ風）。はっきりした色に白いふち。家や目印がシールのように地図の上に乗ります。',
+      bg: '#F3EEE2', park: '#BFE0A0', water: '#8CC8EE', road: '#FFFFFF', casing: '#D8D2C4', major: '#C4BBA8',
+      farmImg: () => pattern(16, '#CFE3A0', (g) => { g.fillStyle = '#B5D47E'; g.fillRect(0, 0, 16, 5); g.fillRect(0, 8, 16, 5); }), pr: 2,
+      draw: (k) => drawSmooth(SHAPES[k](PALS.c), PALS.c), iconPR: 2.6 }
   };
 
   function style(v) {
-    const S = V[v], B = S.bld;
+    const S = V[v];
     const src = {
       farm: polys(D.farm), park: polys(D.park), water: polys(D.water), river: lines(D.river),
-      minor: lines(D.minor), mid: lines(D.mid), major: lines(D.major.concat(D.motorway)), lane: lines(D.lane), path: lines(D.path),
-      bld, trees: pts(trees), pois: pts(pois)
+      minor: lines(D.minor.concat(D.lane)), mid: lines(D.mid), major: lines(D.major.concat(D.motorway)), path: lines(D.path), rail: lines(D.rail),
+      houses: pts(houses), trees: pts(trees), marks: pts(marks)
     };
     const w = (a, b) => ['interpolate', ['linear'], ['zoom'], 14, a, 18, b];
     const L = [{ id: 'bg', type: 'background', paint: { 'background-color': S.bg } }];
-    const fill = (id, img, col) => L.push({ id, type: 'fill', source: id, paint: img ? { 'fill-pattern': img } : { 'fill-color': col } });
-    fill('farm', S.farmImg && v + '-farm', V.now.farm); fill('park', S.parkImg && v + '-park', V.now.park); fill('water', S.waterImg && v + '-water', S.water);
-    L.push({ id: 'river', type: 'line', source: 'river', paint: { 'line-color': S.water, 'line-width': w(2, 6) } });
-    const kcol = (m) => ['match', ['get', 'k'], 'house', m.house, 'apt', m.apt, 'pub', m.pub, 'com', m.com, m.other];
-    if (B && B.depth) L.push({ id: 'bld-depth', type: 'fill', source: 'bld', minzoom: 15, paint: { 'fill-color': kcol(B.depth), 'fill-translate': [0, 2.5] } });
-    if (B) L.push({ id: 'bld', type: 'fill', source: 'bld', minzoom: 15, paint: { 'fill-color': kcol(B) } });
-    if (B) L.push({ id: 'bld-line', type: 'line', source: 'bld', minzoom: 15, paint: { 'line-color': B.line, 'line-width': B.lw } });
-    if (B && B.sketch) L.push({ id: 'bld-line2', type: 'line', source: 'bld', minzoom: 15.5, paint: { 'line-color': B.line, 'line-width': 0.7, 'line-opacity': 0.55, 'line-translate': [1.2, 0.8] } });
-    const R = { 'line-cap': 'round', 'line-join': 'round' };
-    L.push({ id: 'path', type: 'line', source: 'path', paint: { 'line-color': S.path, 'line-width': w(1, 2), 'line-dasharray': [2, 3] } });
-    L.push({ id: 'lane', type: 'line', source: 'lane', layout: R, paint: { 'line-color': S.lane, 'line-width': w(1.2, 5) } });
-    for (const [id, a, b, cc] of [['minor', 3, 11, 'casing'], ['mid', 5, 13, 'casing'], ['major', 7, 19, 'major']]) L.push({ id: id + '-c', type: 'line', source: id, layout: R, paint: { 'line-color': S[cc], 'line-width': w(a, b) } });
-    for (const [id, a, b] of [['minor', 1.5, 9.5], ['mid', 3.5, 11.5], ['major', 5, 17]]) L.push({ id, type: 'line', source: id, layout: R, paint: { 'line-color': S.road, 'line-width': w(a, b) } });
-    if (S.trees) L.push({ id: 'trees', type: 'symbol', source: 'trees', minzoom: 14.5, layout: { 'icon-image': ['concat', v + '-tree', ['to-string', ['get', 'v']]], 'icon-allow-overlap': true, 'icon-size': w(0.55, 1.1), 'icon-anchor': 'bottom' } });
-    if (S.icon) L.push({ id: 'pois', type: 'symbol', source: 'pois', minzoom: 15, layout: { 'icon-image': ['concat', v + '-i-', ['get', 'i']], 'icon-size': w(0.75, 1.05), 'icon-padding': 4 } });
+    L.push({ id: 'farm', type: 'fill', source: 'farm', paint: S.farmImg ? { 'fill-pattern': v + '-farm' } : { 'fill-color': S.farm } });
+    L.push({ id: 'park', type: 'fill', source: 'park', paint: { 'fill-color': S.park } });
+    L.push({ id: 'water', type: 'fill', source: 'water', paint: { 'fill-color': S.water } });
+    L.push({ id: 'river', type: 'line', source: 'river', paint: { 'line-color': S.water, 'line-width': w(3, 8) } });
+    const Rl = { 'line-cap': 'round', 'line-join': 'round' };
+    L.push({ id: 'path', type: 'line', source: 'path', paint: { 'line-color': S.casing, 'line-width': w(1, 2), 'line-dasharray': [2, 3] } });
+    // デフォルメ: 道は実際の形のまま、少し太めに
+    for (const [id, a, b, cc] of [['minor', 3, 12, 'casing'], ['mid', 6, 16, 'casing'], ['major', 9, 24, 'major']]) L.push({ id: id + '-c', type: 'line', source: id, layout: Rl, paint: { 'line-color': S[cc], 'line-width': w(a, b) } });
+    for (const [id, a, b] of [['minor', 1.6, 9.5], ['mid', 4, 13], ['major', 6.5, 20]]) L.push({ id, type: 'line', source: id, layout: Rl, paint: { 'line-color': S.road, 'line-width': w(a, b) } });
+    L.push({ id: 'rail', type: 'line', source: 'rail', paint: { 'line-color': '#5A4A3A', 'line-width': w(3, 6) } });
+    L.push({ id: 'rail-d', type: 'line', source: 'rail', paint: { 'line-color': '#FFFDF5', 'line-width': w(1.5, 3.5), 'line-dasharray': [2, 2] } });
+    if (v !== 'now') {
+      // 上にある層ほど先に置かれる: 目印 → 木 → 家 の順に優先
+      L.push({ id: 'houses', type: 'symbol', source: 'houses', minzoom: 14.6, layout: { 'icon-image': ['concat', v + '-', ['get', 'i']], 'icon-size': w(0.45, 1.1), 'icon-anchor': 'bottom', 'icon-padding': 0 } });
+      L.push({ id: 'trees', type: 'symbol', source: 'trees', minzoom: 14.6, layout: { 'icon-image': ['concat', v + '-', ['get', 'i']], 'icon-size': w(0.45, 1.05), 'icon-anchor': 'bottom', 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
+      L.push({ id: 'marks', type: 'symbol', source: 'marks', layout: { 'icon-image': ['concat', v + '-', ['get', 'i']], 'symbol-sort-key': ['get', 'r'],
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 14, ['match', ['get', 'i'], 'station', 1.0, 'school', 0.85, 0.6], 18, ['match', ['get', 'i'], 'station', 2.0, 'school', 1.7, 1.25]],
+        'icon-anchor': 'bottom', 'icon-padding': 2 } });
+    }
     return { version: 8, sources: Object.fromEntries(Object.entries(src).map(([k, d]) => [k, { type: 'geojson', data: d }])), layers: L };
   }
 
   const [S0, W0, N0, E0] = D.bbox;
   const map = new maplibregl.Map({
-    container: 'map', style: style('a'), center: [(W0 + E0) / 2, (S0 + N0) / 2], zoom: 16, minZoom: 14.8, maxZoom: 18.5,
+    container: 'map', style: style('a'), center: [139.5866, 35.7520], zoom: 15.7, minZoom: 14.6, maxZoom: 18.5,
     maxBounds: [[W0 - 0.004, S0 - 0.003], [E0 + 0.004, N0 + 0.003]], attributionControl: false, dragRotate: false, pitchWithRotate: false, touchPitch: false
   });
   map.touchZoomRotate.disableRotation();
-  // 絵は、地図が求めたときに作って渡す
   map.on('styleimagemissing', (e) => {
-    const cut = e.id.indexOf('-'), v = e.id.slice(0, cut), kind = e.id.slice(cut + 1);
-    const S = V[v]; if (!S || cut < 0) return;
-    let c, pr = S.pixelRatio || 1;
-    if (kind === 'farm') c = S.farmImg(); else if (kind === 'park') c = S.parkImg(); else if (kind === 'water') c = S.waterImg();
-    else if (kind.startsWith('tree')) { c = S.tree(+kind.slice(4)); pr = v === 'a' ? 1 : 2; }
-    else if (kind.startsWith('i-')) { c = S.icon(kind.slice(2)); pr = S.iconPR; }
-    if (c && !map.hasImage(e.id)) map.addImage(e.id, toImg(c), { pixelRatio: pr });
+    const cut = e.id.indexOf('-'), v = e.id.slice(0, cut), kind = e.id.slice(cut + 1), S = V[v];
+    if (!S || cut < 0 || map.hasImage(e.id)) return;
+    if (kind === 'farm') map.addImage(e.id, toImg(S.farmImg()), { pixelRatio: S.pr });
+    else if (SHAPES[kind]) {
+      const c = S.draw(kind);
+      // ドット絵は 18px の絵を4倍に（ぼやけないよう、ドットのまま）引き伸ばしてから渡す。イラストは細かく描いた絵を縮めて見せる
+      if (v === 'a') { const big = document.createElement('canvas'); big.width = big.height = c.width * 4; const g = big.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(c, 0, 0, big.width, big.height); map.addImage(e.id, toImg(big), { pixelRatio: 3 }); }
+      else map.addImage(e.id, toImg(c), { pixelRatio: S.iconPR });
+    }
   });
 
-  // 販売所のピン（今のドット絵）
+  // 販売所のピン（今のドット絵）と駅名
   const PAL = { K: '#3A2A1A', W: '#FFFDF5', R: '#E43B44', O: '#F7962F', G: '#4CAF3A', L: '#8FD45A', B: '#6B3A1A', N: '#C98A4A', S: '#FCD8A8', U: '#2F6FD8', T: '#D9A55B' };
   const SPR = {
     basket: ['....G..L........', '...KRKKOK...KKKK', '..KRRRKOOK..KWWK', '..KRWRKOOOK.KWKK', '.KLLRRKOOOGKKWWK', '.KLLLLGGGGGK.KK.', 'KKKKKKKKKKKKK.K.', 'KTNTNTNTNTNTK.K.', 'KNTNTNTNTNTNK.K.', '.KTNTNTNTNTK..K.', '.KNTNTNTNTNK..K.', '..KKKKKKKKK..KKK'],
     tent: ['...KKKKKKKKKK...', '..KRRWWRRWWRRK..', '.KRRWWRRWWRRWWK.', 'KRRWWRRWWRRWWRRK', 'KKKKKKKKKKKKKKKK', '.K....BBBB....K.', '.K...BSSSSB...K.', '.K...SKSSKS...K.', '.K....SKKS....K.', '.KRR.UUUUUU.LL.K', 'KKKKKKKKKKKKKKKK', 'KNNNNNNNNNNNNNNK', 'KNNNNNNNNNNNNNNK', '.KN..........NK.', '.KK..........KK.']
   };
   for (const s of D.stands) {
-    const el = document.createElement('div'); el.className = 'pin';
-    const c = px(SPR[s.unmanned ? 'basket' : 'tent'], PAL, 1); c.style.width = c.width * 2.25 + 'px'; c.style.imageRendering = 'pixelated';
-    el.append(c); new maplibregl.Marker({ element: el }).setLngLat([s.lng, s.lat]).addTo(map);
+    const rows = SPR[s.unmanned ? 'basket' : 'tent'], c = document.createElement('canvas'); c.width = rows[0].length; c.height = rows.length;
+    const g = c.getContext('2d'); rows.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== '.') { g.fillStyle = PAL[ch]; g.fillRect(x, y, 1, 1); } }));
+    c.style.width = c.width * 2.5 + 'px';
+    const el = document.createElement('div'); el.className = 'pin'; el.append(c);
+    new maplibregl.Marker({ element: el }).setLngLat([s.lng, s.lat]).addTo(map);
+  }
+  for (const s of D.stations) {
+    const el = document.createElement('div'); el.className = 'lbl'; el.textContent = s.name + '駅';
+    const box = document.createElement('div'); box.append(el);
+    new maplibregl.Marker({ element: box }).setLngLat([s.p[1], s.p[0]]).addTo(map);
   }
 
   const note = document.getElementById('note');
