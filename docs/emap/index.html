@@ -48,7 +48,8 @@
     <h1>絵地図の見本</h1>
     <div class="seg" role="group" aria-label="見本">
       <button type="button" data-v="now" aria-pressed="false">今</button>
-      <button type="button" data-v="draw" aria-pressed="true">① 描き込み</button>
+      <button type="button" data-v="draw" aria-pressed="false">①</button>
+      <button type="button" data-v="draw2" aria-pressed="true">①改</button>
       <button type="button" data-v="ai" aria-pressed="false">② AIの絵</button>
     </div>
     <p class="note" id="note"></p>
@@ -61,7 +62,7 @@
 (async () => {
   const q = new URLSearchParams(location.search);
   if (q.has('render')) document.body.classList.add('render');
-  const [D, B] = await Promise.all([fetch('data.json?v=3').then(r => r.json()), fetch('buildings.json?v=1').then(r => r.json())]);
+  const [D, B, X] = await Promise.all([fetch('data.json?v=3').then(r => r.json()), fetch('buildings.json?v=1').then(r => r.json()), fetch('extra.json?v=1').then(r => r.json())]);
   let AI = null;
   try { AI = await (await fetch('ai.json?v=' + Date.now())).json(); } catch (e) {}
   const ll = (p) => [p[1], p[0]];
@@ -79,6 +80,55 @@
     const area = (n - s) * 111000 * (e - w) * 90000, want = Math.min(80, Math.max(1, Math.floor(area / 120)));
     for (let i = 0, t = 0; i < want && t < want * 10; t++) { const p = [s + (n - s) * rnd(), w + (e - w) * rnd()]; if (inside(p, r)) { trees.push({ type: 'Feature', properties: { r: 0.7 + rnd() * 0.6, v: Math.floor(rnd() * 3) }, geometry: { type: 'Point', coordinates: [p[1], p[0]] } }); i++; } }
   }
+
+  // ---------- ①改: AI の絵に寄せる ----------
+  // 家: 建物の位置に、建物の大きさに合わせた正面向きの家の絵を描く（少し大きめにデフォルメ）
+  const bpt = (k) => ({ type: 'FeatureCollection', features: X.bpts.filter(b => k(b[4])).map(([la, ln, sz, a, kind, s]) => ({ type: 'Feature', properties: { sz, kind, i: kind === 'house' ? 'h' + (s % 6) : kind === 'apt' ? 'apt' + (s % 2) : 'big' + (s % 3) }, geometry: { type: 'Point', coordinates: [ln, la] } })) });
+  const housePts = bpt(k => k === 'house');
+  // 大きな建物（学校・マンション・お店・大きな家）は、実際の形のまま屋根の色で描く
+  const bigBld = { type: 'FeatureCollection', features: B.map(([k, s, c], i) => [X.bpts[i][4], s, c]).filter(([kind]) => kind !== 'house')
+    .map(([kind, s, c]) => ({ type: 'Feature', properties: { kind, s }, geometry: { type: 'Polygon', coordinates: [c.map(ll)] } })) };
+  // 庭の木: 家のそばに、ところどころ小さな木（毎回同じ場所に）
+  let seed2 = 7; const rnd2 = () => (seed2 = (seed2 * 16807) % 2147483647) / 2147483647;
+  const yardTrees = { type: 'FeatureCollection', features: X.bpts.filter(() => rnd2() < 0.45).map(([la, ln, sz]) => { const a = rnd2() * 6.28, d = sz * (0.8 + rnd2() * 0.5);
+    return { type: 'Feature', properties: { v: Math.floor(rnd2() * 3), r: 0.5 + rnd2() * 0.4 }, geometry: { type: 'Point', coordinates: [ln + Math.cos(a) * d / 90400, la + Math.sin(a) * d / 111000] } }; }) };
+  // 正面から見た小さな家の絵
+  function houseImg(roof, wall, door) {
+    const c = document.createElement('canvas'); c.width = 64; c.height = 64; const g = c.getContext('2d');
+    g.lineJoin = 'round'; g.strokeStyle = '#6B4A30'; g.lineWidth = 2.5;
+    g.fillStyle = 'rgba(80,60,30,0.18)'; g.beginPath(); g.ellipse(33, 57, 24, 5, 0, 0, 7); g.fill();
+    g.fillStyle = wall; g.beginPath(); g.rect(12, 30, 40, 26); g.fill(); g.stroke();
+    g.fillStyle = roof; g.beginPath(); g.moveTo(4, 32); g.lineTo(32, 8); g.lineTo(60, 32); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = door; g.fillRect(28, 42, 9, 14); g.strokeRect(28, 42, 9, 14);
+    g.fillStyle = '#BFE3F5'; for (const x of [16, 41]) { g.fillRect(x, 36, 8, 8); g.strokeRect(x, 36, 8, 8); }
+    return c;
+  }
+  function aptImg(body, roof) {
+    const c = document.createElement('canvas'); c.width = 64; c.height = 72; const g = c.getContext('2d');
+    g.strokeStyle = '#6B4A30'; g.lineWidth = 2.5; g.fillStyle = 'rgba(80,60,30,0.18)'; g.beginPath(); g.ellipse(32, 66, 26, 5, 0, 0, 7); g.fill();
+    g.fillStyle = body; g.fillRect(8, 10, 48, 54); g.strokeRect(8, 10, 48, 54); g.fillStyle = roof; g.fillRect(6, 6, 52, 7); g.strokeRect(6, 6, 52, 7);
+    g.fillStyle = '#BFE3F5'; g.lineWidth = 1.5; for (let y = 18; y < 58; y += 11) for (const x of [14, 28, 42]) { g.fillRect(x, y, 8, 6); g.strokeRect(x, y, 8, 6); }
+    return c;
+  }
+  function bigImg(roof, wall) {
+    const c = document.createElement('canvas'); c.width = 80; c.height = 56; const g = c.getContext('2d');
+    g.lineJoin = 'round'; g.strokeStyle = '#6B4A30'; g.lineWidth = 2.5; g.fillStyle = 'rgba(80,60,30,0.18)'; g.beginPath(); g.ellipse(40, 50, 34, 5, 0, 0, 7); g.fill();
+    g.fillStyle = wall; g.fillRect(8, 22, 64, 26); g.strokeRect(8, 22, 64, 26);
+    g.fillStyle = roof; g.beginPath(); g.moveTo(4, 24); g.lineTo(16, 8); g.lineTo(64, 8); g.lineTo(76, 24); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = '#BFE3F5'; g.lineWidth = 1.5; for (const x of [14, 28, 46, 60]) { g.fillRect(x, 28, 8, 7); g.strokeRect(x, 28, 8, 7); }
+    g.fillStyle = '#9C6B48'; g.fillRect(36, 34, 9, 14); g.strokeRect(36, 34, 9, 14);
+    return c;
+  }
+  const HOUSE = {
+    h0: () => houseImg('#E2584A', '#FFF6E6', '#9C6B48'), h1: () => houseImg('#3E78C8', '#FFF6E6', '#9C6B48'), h2: () => houseImg('#E88A3A', '#FDF0D8', '#7C5A3A'),
+    h3: () => houseImg('#7A5A44', '#FFF6E6', '#5A4030'), h4: () => houseImg('#4E9A58', '#FDF0D8', '#9C6B48'), h5: () => houseImg('#8A8E99', '#FFFFFF', '#6A6E78'),
+    apt0: () => aptImg('#F2EDE2', '#9AA0AA'), apt1: () => aptImg('#E6EEF5', '#7A8EA8'),
+    big0: () => bigImg('#C9653E', '#FFF2DC'), big1: () => bigImg('#5E86B8', '#F6F2EA'), big2: () => bigImg('#8F7A62', '#FAF0DE')
+  };
+  // 紙の質感（ざらつき）をうっすら重ねる
+  (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); const d = g.createImageData(128, 128);
+    for (let i = 0; i < d.data.length; i += 4) { const v = Math.random() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 18; } g.putImageData(d, 0, 0);
+    const el = document.createElement('div'); el.id = 'paper'; el.style.cssText = `position:absolute;inset:0;pointer-events:none;z-index:2;background-image:url(${c.toDataURL()});mix-blend-mode:multiply;`; window.__paper = el; })();
 
   // 模様
   function pattern(size, bg, draw) { const c = document.createElement('canvas'); c.width = c.height = size; const g = c.getContext('2d'); g.fillStyle = bg; g.fillRect(0, 0, size, size); draw(g, size); return c; }
@@ -101,6 +151,7 @@
     ['match', ['get', 's'], 0, arr[0], 1, arr[1], 2, arr[2], 3, arr[3], 4, arr[4], 5, arr[5], arr[6]]];
 
   function style(v) {
+    if (v === 'draw2') return style2();
     const w = (a, b) => ['interpolate', ['linear'], ['zoom'], 14, a, 18, b];
     const R = { 'line-cap': 'round', 'line-join': 'round' };
     const src = {
@@ -143,15 +194,59 @@
     return { version: 8, sources: Object.fromEntries(Object.entries(src).map(([k, d]) => [k, k === 'ai' ? d : { type: 'geojson', data: d }])), layers: L };
   }
 
+  // ①改: 庭の緑の地面、クリームの道に茶色のふち、家の絵、校庭、庭の木
+  function style2() {
+    const w = (a, b) => ['interpolate', ['linear'], ['zoom'], 14, a, 18, b];
+    const R = { 'line-cap': 'round', 'line-join': 'round' };
+    const src = {
+      farm: polys(D.farm), park: polys(D.park), water: polys(D.water), river: lines(D.river),
+      minor: lines(D.minor.concat(D.lane)), mid: lines(D.mid), major: lines(D.major.concat(D.motorway)), path: lines(D.path), rail: lines(D.rail),
+      school: polys(X.school), sand: polys(X.sand), grass: polys(X.grass), parking: polys(X.parking),
+      houses: housePts, big: bigBld, yard: yardTrees, trees: { type: 'FeatureCollection', features: trees }
+    };
+    // 家の大きさ: 建物の大きさ(m) × 1.7 を、その拡大率での画面の大きさにする（ズームが1上がると2倍）
+    const sz = ['min', ['get', 'sz'], 13];   // 家の大きさに上限（大きすぎる家にしない）
+    const size = (k) => ['interpolate', ['exponential', 2], ['zoom'], 14, ['*', sz, 1.7 * 16384 / 63520 / k], 19, ['*', sz, 1.7 * 524288 / 63520 / k]];
+    const L = [
+      { id: 'bg', type: 'background', paint: { 'background-color': '#D7E3A6' } },
+      { id: 'farm', type: 'fill', source: 'farm', paint: { 'fill-pattern': ['concat', 'field', ['to-string', ['get', 'n']]] } },
+      { id: 'farm-edge', type: 'line', source: 'farm', paint: { 'line-color': '#8FA460', 'line-width': 1 } },
+      { id: 'grass', type: 'fill', source: 'grass', paint: { 'fill-color': '#C2DC8E' } },
+      { id: 'park', type: 'fill', source: 'park', paint: { 'fill-color': '#B5D682' } },
+      { id: 'school', type: 'fill', source: 'school', paint: { 'fill-color': '#E8DDB8' } },
+      { id: 'sand', type: 'fill', source: 'sand', paint: { 'fill-color': '#EAD7A8' } },
+      { id: 'sand-line', type: 'line', source: 'sand', paint: { 'line-color': '#C9B080', 'line-width': 1 } },
+      { id: 'parking', type: 'fill', source: 'parking', paint: { 'fill-color': '#E2DCC8' } },
+      { id: 'water', type: 'fill', source: 'water', paint: { 'fill-pattern': 'water' } },
+      { id: 'river-c', type: 'line', source: 'river', paint: { 'line-color': '#6B8FB0', 'line-width': w(4.5, 11) } },
+      { id: 'river', type: 'line', source: 'river', paint: { 'line-color': '#5FA8E0', 'line-width': w(3, 8.5) } },
+      { id: 'path', type: 'line', source: 'path', paint: { 'line-color': '#B89A6A', 'line-width': w(1, 2), 'line-dasharray': [2, 3] } }
+    ];
+    for (const [id, a, b] of [['minor', 3.5, 12], ['mid', 6, 16], ['major', 9, 22]]) L.push({ id: id + '-c', type: 'line', source: id, layout: R, paint: { 'line-color': '#9C7A52', 'line-width': w(a, b) } });
+    for (const [id, a, b] of [['minor', 2, 9.5], ['mid', 4.2, 13], ['major', 7, 18.5]]) L.push({ id, type: 'line', source: id, layout: R, paint: { 'line-color': '#FBF3DC', 'line-width': w(a, b) } });
+    L.push({ id: 'rail', type: 'line', source: 'rail', paint: { 'line-color': '#3A2A1A', 'line-width': w(3, 6) } }, { id: 'rail-d', type: 'line', source: 'rail', paint: { 'line-color': '#FFFDF5', 'line-width': w(1.5, 3.5), 'line-dasharray': [2, 2] } });
+    const bigRoof = ['match', ['get', 'kind'], 'apt', '#E8E2D6', 'pub', '#EBA98C', 'com', '#F0D78A', ['match', ['%', ['get', 's'], 3], 0, '#D98A6A', 1, '#8FA9CC', '#B89C7C']];
+    const bigWall = ['match', ['get', 'kind'], 'apt', '#B8B0A0', 'pub', '#C5826A', 'com', '#CDB062', ['match', ['%', ['get', 's'], 3], 0, '#B5684C', 1, '#6E87AA', '#97795A']];
+    L.push({ id: 'big-wall', type: 'fill', source: 'big', paint: { 'fill-color': bigWall, 'fill-translate': [0, 3] } });
+    L.push({ id: 'big', type: 'fill', source: 'big', paint: { 'fill-color': bigRoof } });
+    L.push({ id: 'big-line', type: 'line', source: 'big', paint: { 'line-color': '#6B4A30', 'line-width': w(0.6, 1.6) } });
+    // 家・木は下にあるほど手前（画面の下ほど前に描く）
+    L.push({ id: 'yard', type: 'symbol', source: 'yard', minzoom: 15, layout: { 'icon-image': ['concat', 'tree', ['to-string', ['get', 'v']]], 'icon-size': ['interpolate', ['exponential', 2], ['zoom'], 15, ['*', ['get', 'r'], 0.45], 19, ['*', ['get', 'r'], 7]], 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'symbol-z-order': 'viewport-y' } });
+    L.push({ id: 'trees', type: 'symbol', source: 'trees', minzoom: 14.5, layout: { 'icon-image': ['concat', 'tree', ['to-string', ['get', 'v']]], 'icon-size': ['interpolate', ['linear'], ['zoom'], 14, ['*', ['get', 'r'], 0.35], 18, ['*', ['get', 'r'], 1.2]], 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
+    L.push({ id: 'houses', type: 'symbol', source: 'houses', minzoom: 14.6, layout: { 'icon-image': ['get', 'i'], 'icon-size': size(32), 'icon-anchor': 'bottom', 'icon-offset': [0, 12],
+      'icon-allow-overlap': true, 'icon-ignore-placement': true, 'symbol-z-order': 'viewport-y' } });
+    return { version: 8, sources: Object.fromEntries(Object.entries(src).map(([k, d]) => [k, { type: 'geojson', data: d }])), layers: L };
+  }
+
   const [S0, W0, N0, E0] = D.bbox;
   const render = q.has('render');
   const map = new maplibregl.Map({
-    container: 'map', style: style(render ? 'now' : 'draw'), center: [139.5866, 35.7520], zoom: render ? 16.2 : 15.7, minZoom: 14.6, maxZoom: 18.5,
+    container: 'map', style: style(render ? 'now' : 'draw2'), center: [139.5866, 35.7520], zoom: render ? 16.2 : 15.7, minZoom: 14.6, maxZoom: 18.5,
     maxBounds: render ? null : [[W0 - 0.004, S0 - 0.003], [E0 + 0.004, N0 + 0.003]], attributionControl: false, dragRotate: false, pitchWithRotate: false, touchPitch: false,
     preserveDrawingBuffer: render
   });
   map.touchZoomRotate.disableRotation();
-  map.on('styleimagemissing', (e) => { const f = PATTERNS[e.id]; if (f && !map.hasImage(e.id)) map.addImage(e.id, toImg(f()), { pixelRatio: 2 }); });
+  map.on('styleimagemissing', (e) => { const f = PATTERNS[e.id] || HOUSE[e.id]; if (f && !map.hasImage(e.id)) map.addImage(e.id, toImg(f()), { pixelRatio: 2 }); });
   if (render) {
     // AI に渡す画像の四隅の位置を記録する
     map.once('idle', () => {
@@ -183,6 +278,7 @@
 
   const NOTES = {
     now: '今の地図。比べるための基準です。',
+    draw2: '①改 AI の絵に寄せて描き込む。建物の位置と大きさに合わせて家の絵を描き、家のすき間は庭の緑、道はクリームに茶色のふち、校庭や運動場も描きました。紙のざらつきをうっすら重ねています。データから自動で描くので軽く、区全体にも広げられます。',
     draw: '① 建物を地図に描き込む。実際の建物の形に屋根の色と少しの厚みを付けて「上から見た家並み」に。畑はパッチワーク、公園は上から見た木。データから自動で描くので区全体にも広げられます。',
     ai: AI ? '② 今の地図の画像を AI に渡して絵地図に描き直し、四隅を実際の位置に合わせて重ねています。「絵の濃さ」を下げると、下の地図とのずれが分かります。' : '② の絵はまだ用意できていません。'
   };
@@ -192,10 +288,13 @@
     note.textContent = NOTES[v];
     document.getElementById('sliderRow').hidden = v !== 'ai';
     map.setStyle(style(v));
+    paperOn(v);
   }
   document.querySelectorAll('.seg button').forEach(b => b.onclick = () => show(b.dataset.v));
   document.getElementById('op').oninput = (e) => { if (map.getLayer('ai')) map.setPaintProperty('ai', 'raster-opacity', +e.target.value / 100); };
-  note.textContent = NOTES.draw;
+  note.textContent = NOTES.draw2;
+  document.querySelector('.app').style.position = 'relative'; document.getElementById('map').style.position = 'relative'; document.getElementById('map').append(window.__paper);
+  const paperOn = (v) => { window.__paper.hidden = v !== 'draw2'; };
 })();
 </script>
 </body>
