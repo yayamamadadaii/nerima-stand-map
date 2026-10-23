@@ -54,8 +54,8 @@
     <div class="seg" role="group" aria-label="見本">
       <button type="button" data-v="now" aria-pressed="false">今</button>
       <button type="button" data-v="draw" aria-pressed="false">①</button>
-      <button type="button" data-v="dot" aria-pressed="true">①ドット</button>
-      <button type="button" data-v="ai" aria-pressed="false">② AIの絵</button>
+      <button type="button" data-v="dot" aria-pressed="false">①ドット</button>
+      <button type="button" data-v="ai" aria-pressed="true">② AIの絵</button>
     </div>
     <p class="note" id="note"></p>
     <div class="dotrow" id="dotRow">
@@ -71,7 +71,7 @@
         <button type="button" data-img="ai.jpg?v=1">手描き</button><button type="button" data-img="ai2.jpg?v=1">ドット</button><button type="button" data-img="ai3.jpg?v=1">ドット強</button>
       </div>
       <div class="seg seg-sm" role="group" aria-label="12色に減らした絵">
-        <button type="button" data-img="px2_4.png?v=1">ドット 12色</button><button type="button" data-img="px3_4.png?v=1" aria-pressed="true">ドット強 12色</button><button type="button" data-img="px3_6.png?v=1">12色 粗め</button>
+        <button type="button" data-img="px2_4.png?v=2">ドット 12色</button><button type="button" data-img="px3_4.png?v=2" aria-pressed="true">ドット強 12色</button><button type="button" data-img="px3_6.png?v=2">12色 粗め</button>
       </div>
     </div>
     <label class="slider" id="sliderRow" hidden>絵の濃さ <input id="op" type="range" min="0" max="100" value="50"></label>
@@ -84,7 +84,7 @@
   const q = new URLSearchParams(location.search);
   if (q.has('render')) document.body.classList.add('render');
   const [D, B, X] = await Promise.all([fetch('data.json?v=3').then(r => r.json()), fetch('buildings.json?v=1').then(r => r.json()), fetch('extra.json?v=1').then(r => r.json())]);
-  let AI = null, AIIMG = 'px3_4.png?v=1';
+  let AI = null, AIIMG = 'px3_4.png?v=2';
   try { AI = await (await fetch('ai.json?v=' + Date.now())).json(); } catch (e) {}
   const ll = (p) => [p[1], p[0]];
   const lines = (list) => ({ type: 'FeatureCollection', features: list.map(c => ({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: c.map(ll) } })) });
@@ -354,11 +354,12 @@
   }
   document.querySelectorAll('.seg [data-v]').forEach(b => b.onclick = () => show(b.dataset.v));
   document.getElementById('op').oninput = (e) => { if (map.getLayer('ai')) map.setPaintProperty('ai', 'raster-opacity', +e.target.value / 100); };
-  note.textContent = NOTES.dot;
+  note.textContent = NOTES.ai;
   document.querySelector('.app').style.position = 'relative'; document.getElementById('map').style.position = 'relative'; document.getElementById('map').append(window.__paper);
   const paperOn = (v) => { window.__paper.hidden = v !== 'draw2'; };
   paperOn('dot');
-  setDot(true);
+  // 地図の読み込みが終わってから切り替える（先に切り替えると下の地図が描かれないことがある）
+  map.once('load', () => show('ai'));
 })();
 </script>
 </body>
