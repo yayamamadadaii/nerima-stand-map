@@ -1,6 +1,6 @@
-# 絵地図（docs/art/）を、町の境界から外へ行くほど透明にする（四角い絵の端を目立たなくする）
-# usage: python3 fade_art.py <入力フォルダ> <出力フォルダ> <smooth|dots> [消えきるまでの幅 m 既定120]
-#   smooth: 外へ行くほど少しずつ薄くなる / dots: 外へ行くほどドットがまばらに消える
+# 絵地図を、町の境界から外へ行くほど透明にする（四角い絵の端を目立たなくする）
+# usage: python3 fade_art.py art_src docs/art smooth [消えきるまでの幅 m 既定120]
+#   smooth: 外へ行くほど少しずつ薄くなる（採用） / dots: 外へ行くほどドットがまばらに消える（見比べて不採用）
 # 入力フォルダの tiles.json（四角の位置）と docs/data/mapdata.json（町の境界）を使う
 # 必要: pip install pillow numpy scipy
 import json, sys, math

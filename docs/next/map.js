@@ -66,15 +66,14 @@
   }
 
   // AI で描いたドット絵の地図（art/）。今の地図に半分の濃さで重ねる。見えている所の絵だけ読み込む
+  // 絵は町の境界から外へ行くほど薄くなるように作ってある（tools/fade_art.py）
   const ART_OPACITY = 0.5;
-  // 見比べ用: ?art=a（なめらかに消える）/ ?art=b（ドットがまばらに消える）。指定なしは四角いままの絵
-  const ART_DIR = 'art/' + ({ a: 'a/', b: 'b/' }[new URLSearchParams(location.search).get('art')] || '');
   let artTiles = null;
   const artAdded = new Set();
   async function loadArt() {
     if (!artTiles) {
       artTiles = [];
-      artTiles = (await (await fetch(`${window.APP_BASE || ''}${ART_DIR}tiles.json?v=${window.APP_V || ''}`)).json()).tiles;
+      artTiles = (await (await fetch(`${window.APP_BASE || ''}art/tiles.json?v=${window.APP_V || ''}`)).json()).tiles;
     }
     const b = map.getBounds(), mx = (b.getEast() - b.getWest()) / 2, my = (b.getNorth() - b.getSouth()) / 2;
     for (const t of artTiles) {
@@ -83,7 +82,7 @@
       if (r < b.getWest() - mx || l > b.getEast() + mx || top < b.getSouth() - my || bottom > b.getNorth() + my) continue;
       artAdded.add(t.url);
       const id = 'art-' + t.url;
-      map.addSource(id, { type: 'image', url: `${window.APP_BASE || ''}${ART_DIR}${t.url}?v=${window.APP_V || ''}`, coordinates: t.corners });
+      map.addSource(id, { type: 'image', url: `${window.APP_BASE || ''}art/${t.url}?v=${window.APP_V || ''}`, coordinates: t.corners });
       // 道や畑の上・町の外を薄くする覆いの下
       map.addLayer({ id, type: 'raster', source: id, paint: { 'raster-opacity': ART_OPACITY, 'raster-resampling': 'nearest', 'raster-fade-duration': 0 } }, 'mask');
     }

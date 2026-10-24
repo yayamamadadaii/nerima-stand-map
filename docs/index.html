@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#F3EBDD">
 <title>大泉学園無人販売所</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script>window.APP_V = "202610242303";</script>
+<script>window.APP_V = "202610250024";</script>
 <script>
   // GitHub Pages はページを最大10分スマホに残すので、新しい版が出ていたら1回だけ読み直す
   fetch((window.APP_BASE || '') + 'version.txt?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(v => {
@@ -17,12 +17,12 @@
     location.reload();
   }).catch(() => {});
 </script>
-<link rel="stylesheet" href="style.css?v=202610242303">
+<link rel="stylesheet" href="style.css?v=202610250024">
 <script>
   // 普段はファミコン本体風。simple/ のページか ?theme=simple のときだけシンプルな見た目
   if ((window.APP_THEME || new URLSearchParams(location.search).get('theme') || 'fami') === 'fami') document.documentElement.classList.add('retro', 't-fami');
 </script>
-<link rel="stylesheet" href="themes.css?v=202610242303">
+<link rel="stylesheet" href="themes.css?v=202610250024">
 <style>
   .leaflet-container { font-family: var(--font); background: var(--map-land); }
   .lbl { transform: translate(-50%, -50%); }
@@ -53,10 +53,10 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="themes.js?v=202610242303"></script>
-<script src="common.js?v=202610242303"></script>
-<script src="roads.js?v=202610242303"></script>
-<script src="layers.js?v=202610242303"></script>
+<script src="themes.js?v=202610250024"></script>
+<script src="common.js?v=202610250024"></script>
+<script src="roads.js?v=202610250024"></script>
+<script src="layers.js?v=202610250024"></script>
 <script>
 // Leaflet で真上から見た平らな地図を描く。軽さ優先
 (() => {
