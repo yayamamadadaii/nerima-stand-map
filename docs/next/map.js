@@ -65,6 +65,28 @@
     for (const d of SMALL) map.addLayer({ ...layerDef(d, c), minzoom: SMALL_Z }, 'minor-c');
   }
 
+  // AI で描いたドット絵の地図（art/）。今の地図に半分の濃さで重ねる。見えている所の絵だけ読み込む
+  const ART_OPACITY = 0.5;
+  let artTiles = null;
+  const artAdded = new Set();
+  async function loadArt() {
+    if (!artTiles) {
+      artTiles = [];
+      artTiles = (await (await fetch(`${window.APP_BASE || ''}art/tiles.json?v=${window.APP_V || ''}`)).json()).tiles;
+    }
+    const b = map.getBounds(), mx = (b.getEast() - b.getWest()) / 2, my = (b.getNorth() - b.getSouth()) / 2;
+    for (const t of artTiles) {
+      if (artAdded.has(t.url)) continue;
+      const [[l, top], , [r, bottom]] = t.corners;
+      if (r < b.getWest() - mx || l > b.getEast() + mx || top < b.getSouth() - my || bottom > b.getNorth() + my) continue;
+      artAdded.add(t.url);
+      const id = 'art-' + t.url;
+      map.addSource(id, { type: 'image', url: `${window.APP_BASE || ''}art/${t.url}?v=${window.APP_V || ''}`, coordinates: t.corners });
+      // 道や畑の上・町の外を薄くする覆いの下
+      map.addLayer({ id, type: 'raster', source: id, paint: { 'raster-opacity': ART_OPACITY, 'raster-resampling': 'nearest', 'raster-fade-duration': 0 } }, 'mask');
+    }
+  }
+
   const adapter = {
     async init({ D, towns, stands, pins, meEl, onMapClick, onUserMove }) {
       const ring = towns.flatMap(t => t.rings[0]);
@@ -109,6 +131,16 @@
       map.on('zoom', setFar);
       setFar();
       map.on('zoomend', () => { if (map.getZoom() >= SMALL_Z - 0.5) loadSmall(); });
+      map.on('moveend', loadArt);
+      // 読み込みに失敗した絵は外しておき、次に地図を動かしたときに読み直す
+      map.on('error', (e) => {
+        const id = e.sourceId;
+        if (!id || !id.startsWith('art-')) return;
+        if (map.getLayer(id)) map.removeLayer(id);
+        if (map.getSource(id)) map.removeSource(id);
+        artAdded.delete(id.slice(4));
+      });
+      loadArt();
 
       const label = (p, text, cls) => {
         const div = document.createElement('div');
