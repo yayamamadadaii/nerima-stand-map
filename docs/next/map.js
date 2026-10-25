@@ -65,9 +65,9 @@
     for (const d of SMALL) map.addLayer({ ...layerDef(d, c), minzoom: SMALL_Z }, 'minor-c');
   }
 
-  // AI で描いたドット絵の地図（art/）。今の地図に半分の濃さで重ねる。見えている所の絵だけ読み込む
+  // AI で描いたドット絵の地図（art/）。今の地図に濃さ30%で重ねる。見えている所の絵だけ読み込む
   // 絵は町の境界から外へ行くほど薄くなるように作ってある（tools/fade_art.py）
-  const ART_OPACITY = 0.5;
+  const ART_OPACITY = 0.3;
   let artTiles = null;
   const artAdded = new Set();
   async function loadArt() {
