@@ -77,6 +77,24 @@ out['stations'] = stations
 S = [r for r in json.load(open(stands_path)) if '大泉' in r['address']]
 out['stands'] = [{'no': r['no'], 'name': r['name'], 'address': r['address'], 'lat': r['lat'], 'lng': r['lng'],
                   'items': r['items'], 'unmanned': r['unmanned'], 'note': r['note'] + ('（位置は丁目単位のおおよそ）' if r['no']==66 else '')} for r in S]
+# 同じ名前の販売所（「加藤さんの直売所」など）は、一覧で見分けられるように場所を付ける（2026-10-26 だいき了承）
+# 町名と丁目で分かれればそこまで、同じ丁目にもあれば番まで・号まで足す
+def with_area(stands):
+    import collections, re
+    def label(s, lv):
+        a = re.sub(r'^練馬区', '', s['address']); m = re.match(r'(\D+)([\d-]+)', a)
+        if not m: return a
+        parts = m[2].split('-')
+        return m[1] + parts[0] + '丁目' if lv == 0 else m[1] + '-'.join(parts[:lv + 1])
+    n = collections.Counter(s['name'] for s in stands)
+    groups = collections.defaultdict(list)
+    for s in stands:
+        if n[s['name']] > 1: groups[s['name']].append(s)
+    for g in groups.values():
+        lv = next((lv for lv in range(3) if len({label(s, lv) for s in g}) == len(g)), 2)
+        for s in g: s['name'] += f'（{label(s, lv)}）'
+    return stands
+out['stands'] = with_area(out['stands'])
 s = json.dumps(out, ensure_ascii=False, separators=(',',':'))
 open(out_path,'w',encoding='utf-8').write(s)
 print(len(s), {k: len(v) for k, v in out.items()}, [ (t['name'], len(t['rings'])) for t in towns], stations)

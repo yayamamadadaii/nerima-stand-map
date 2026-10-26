@@ -9,7 +9,7 @@
 
 - 見せたいのは「大泉（いずれ練馬区全体）に直売所と無人販売所がこれだけある」ということ。**正確な地図を作りたいわけではない**
 - ただし **道の形と、直売所・無人販売所・自分の位置は実際どおりに保つ**（歩いて使うため）。そのうえで、描くものと描き方は絵地図のようにデフォルメしてよい
-  - 建物の形は描かず、町の地面に家の絵をまばらに置く（2026-10-23 だいき選択）
+  - 建物の形は描かず、AI に描いてもらったドット絵の絵地図を地図に薄く重ねる（2026-10-24〜25 だいき選択。下の「絵地図」）
   - 地図はデータから自動で描く（1枚絵にはしない）。拡大して歩き回る使い方。いずれ練馬区全体に広げられる作りにする
 - **更新が必要なデータは基本的に直売所と無人販売所だけ**。お店などの目印は、簡単に直せるなら直す程度で重要ではない
 
@@ -21,7 +21,7 @@
   - 一般公開するときは `docs/index.html` の `noindex` と `docs/robots.txt` の Disallow を外す
 - **広告を載せる段階になったら**: 独自ドメインを買って Cloudflare Pages に移す（GitHub Pages は商用目的の利用がグレー、AdSense は独自ドメインが必要）
   - 移しやすいように、`docs/` は静的ファイルだけ・相対パス・GitHub 固有の機能（Jekyll など）に頼らない
-- **書き込み機能を入れる段階になったら**: データ保存は Firebase / Supabase などを別に足す。ページの置き場所はそのまま
+- **書き込み機能を入れる段階になったら**: データ保存は別に足す（候補: Googleスプレッドシート＋GAS、Firebase、Supabase。未決定）。ページの置き場所はそのまま
 - コミットの作者は GitHub の noreply アドレス（リポジトリだけの設定）。だいきのメールアドレスは公開リポジトリに出さない
 
 ## 公開の手順
@@ -35,6 +35,8 @@
 スマホに残った古いページは、開いたときに `version.txt` を見て1回だけ読み直す仕組みがある（GitHub Pages はページを最大10分キャッシュさせるため）。
 
 ## 今の画面（2026-10-22 時点、Leaflet 版）
+
+`next/`（MapLibre 版）も見た目と動きは同じで、違いは地図の描き方と絵地図が重なっていること（下の「次にやること」「絵地図」）。
 
 - **地図**: OpenStreetMap のデータから自前で描く平らな地図（Leaflet）。大泉5町の外は薄く覆い、外へはあまり動かせない
 - **ピン**: 無人販売所と直売所を分けずに全部（46か所）出し、ドット絵で見分ける
@@ -60,10 +62,10 @@
   - ズームの数字は Leaflet 版に合わせてある（MapLibre のズーム + 1 = Leaflet のズーム）。`layers.js` の表示し始めるズームなどはそのまま使える
   - だいきが実機で OK を出したら、`next/` を本体（`docs/index.html`）に入れ替え、Leaflet 用の `roads.js` と index.html 内の Leaflet のコードを消す
 
-## 絵地図（2026-10-24 大泉5町ぶんを `next/` に入れた。見本は `docs/emap/`）
+## 絵地図（2026-10-24 大泉5町ぶんを `next/` に入れた）
 
 - 方向性: **今の地図の上に、AI に描いてもらった絵地図を濃さ30%で重ねる**（2026-10-25 だいき指示で50%から変更）。絵は「ドット強 12色」（だいき選択）
-  - 作り方: 今の地図を画像にする（`emap/?render=1` で四隅の位置も出る）→ AI（Higgsfield の GPT Image 2.5、1枚1クレジット）に「ファミコン時代のRPGの町・大きなドット・平らな12色くらい」で描き直してもらう → `tools/pixelize.py` でドット1つ＝1画素・決めた12色の小さな PNG にする → 地図では raster-resampling: nearest で拡大
+  - 作り方: 今の地図を画像にする（下の「元の地図の画像」）→ AI（Higgsfield の GPT Image 2.5、1枚1クレジット）に「ファミコン時代のRPGの町・大きなドット・平らな12色くらい」で描き直してもらう → `tools/pixelize.py` でドット1つ＝1画素・決めた12色の小さな PNG にする → 地図では raster-resampling: nearest で拡大
   - 広い砂色（空き地・校庭など）は緑に塗り替える（だいき指示）。`pixelize.py` の `--green`
   - 1枚 約650m×860m・30〜70KB。大泉5町で31枚（全部で約2MB。四隅は `tiles.json`）
   - 元の絵（ドット化したまま）は `art_src/{i}_{j}.png`（サイトには出さない）。地図に出すのは、町の境界から外へ約120mでなめらかに薄くした `docs/art/`（だいき選択 2026-10-25、ドットがまばらに消える案と見比べて）
@@ -73,8 +75,15 @@
   - 31枚で 31 クレジット（2026-10-24）。絵を描き直すときは、その1枚だけ同じ手順で作って `pixelize.py <AIの絵> art_src/i_j.png 4` で置き換え、`fade_art.py` をもう一度かける
 - 試してやめたもの: 家の絵を置く／建物の形に家の絵を描き込む（①改、うるさい）、表示中にドット化する処理（動かすとチカチカする）
 - つなぎ目（2026-10-23 確認）: 2×2 の4枚を並べても、道がそろい色も12色で共通なので境目はほとんど分からない
-  - 隣の絵は「元の地図＋最初の絵（スタイル見本）」の2枚を AI に渡して描かせる。元の地図は `tools/render_base.html`（四隅はタイトルに出る）。1枚の幅は経度 0.007174・緯度 0.007762
-  - 見本の「4枚」ボタンで確認できる（`docs/emap/tiles/`、`tiles.json`）
+  - 隣の絵は「元の地図＋最初の絵（スタイル見本）」の2枚を AI に渡して描かせる。1枚の幅は経度 0.007174・緯度 0.007762
+  - スタイル見本は Higgsfield 上の画像 `70340599-24f1-46c2-bb5e-405cd85d2bc7`（0_0 の絵）。AI への指示文は下
+- 元の地図の画像（AI に渡すもの）の作り方
+  1. `python3 tools/fetch_buildings.py docs/_render/render_bld.json [S W N E]` で建物の形を取る（範囲を広げるときは S W N E を変える）
+  2. `tools/render_base.html` を `docs/_render/render.html` に置き、`docs/` を手元で配信する（`docs/_render/` はコミットしない）
+  3. `node tools/render_tile.mjs "http://localhost:<port>/_render/render.html?lng=<経度>&lat=<緯度>" base_i_j.png 768 1024` で撮る。中心は 経度 139.5866 + i×0.007174、緯度 35.7520 − j×0.007762。四隅は出力の1行目
+  4. AI の設定: GPT Image 2.5、縦横 3:4、quality medium、2k。指示文:「The FIRST image is a top-down street map; the SECOND image is a finished pixel-art town map of the neighboring area and is the exact STYLE reference. Redraw the FIRST image in exactly the same style as the SECOND image: authentic NES / Famicom era 8-bit pixel art town map, viewed straight from above, big chunky pixels, the same strict palette of about 12 flat colors (cream roads with dark brown outlines, two greens for grass and trees, blue water, red/blue/orange roofs, light gray buildings, white walls, sand). Keep EXACTLY the road layout, river, railway and block shapes of the FIRST image in the same positions. Tiny pixel houses with pitched roofs, round pixel trees, pixel crop rows for fields. No gradients, no anti-aliasing, no text, no labels, no border, no perspective tilt.」
+  5. 同時に投げるのは5枚まで（多いと 429 で断られる）
+  6. `pixelize.py` → `art_src/`、`fade_art.py` → `docs/art/`、`docs/art/tiles.json` と `art_src/tiles.json` に四隅を足す
 - まだ: 実機での見え方、AI 画像の商用利用の規約確認（広告を載せる段階で）
 
 ## 見た目の決まりごと（このアプリだけの例外・追加）
@@ -111,8 +120,19 @@
 
 ## 要望メモ（だいきが「実装して」と言うまで手を付けない）
 
-- **権限を持つ人が販売所を追加できる**（当分はだいきだけ）。ログインとデータ保存が必要。だいき1人だけなら GitHub 上のデータファイルを直す形でも足りる
-- **見つけた人が発見を報告できる → だいきが確認したら、ほぼ自動で地図に反映**。報告は確認待ちの列に入り、そのままは出さない
+- **地図に報告の仕組みを付ける**（だいきのラフ案 2026-10-25。仕様を詰めてから作る）
+  - 情報の状態は「未確認」と「確認済み」の2つ。未確認は地図に出すが印を付ける（例: 半透明のカゴに「？」。絵文字は使わない）
+  - 入り口: ①地図にピンを打って報告（誰でも）②住所で報告 ③SNS などで見つけた情報（出どころのリンクを付ける）。どれも最初は未確認
+  - 権限者が登録したものは最初から確認済み。未確認は、確かめられたら権限者が確認済みにする
+  - 作る順番の案: ①データに状態を持たせ、未確認の印を出す → ②権限者の登録・切り替え・削除 → ③みんなからの報告 → ④「なくなった」の報告と SNS 情報
+  - **返事待ち（作る前に決める）**:
+    - 未確認をすぐ全員に見せるか（Claude 案: 場所だけすぐ出し、名前・メモ・写真は権限者が見てから）
+    - 「確認できた」の基準（権限者が現地で見た／写真付き／別々の2人以上の報告。または権限者の判断だけ）
+    - 報告する人にログインを求めるか
+    - 「なくなった」の報告も受けるか（Claude 案: 受ける）
+    - ラフ案の「従者が分かれば報告できる」は「住所が分かれば」の意味か
+    - SNS の情報を仮として使う方針に変えるか（前は「噂・SNS は使わない」）
+  - 気をつけること: 販売所の多くは個人の家の前なので、載せないでほしい人がすぐ消してもらえる連絡先を用意する。写真は顔・ナンバー・表札が写るので権限者が見てから出す。SNS の文章や写真は書き写さず、場所とリンクだけ。自由に書けるメモ欄はコメント機能と同じ扱い（下）
 - **コメント機能**: 付けるかは最後に慎重に判断する。自由入力の欄（メモ・報告）の扱いも一緒に決める
 - **訪問スタンプ・発見者の記録**（後回し）
 - **シンプルな見た目との切り替え**を画面上でできるようにする（後回し）
@@ -121,6 +141,9 @@
 ## ファイル
 
 - `docs/index.html` … ページ本体と地図の描画（今は Leaflet）
+- `docs/next/` … MapLibre 版の試作（`map.js` が地図の描画と絵地図の読み込み。ほかは本体と共通）
+- `docs/art/` … 地図に重ねる絵地図（境界の外を薄くしたもの）と四隅の一覧 `tiles.json`
+- `art_src/` … 絵地図の元（ドット化したまま、境界の外も薄くしていない）。サイトには出さない
 - `docs/common.js` … 地図ライブラリに依らない部分: データ読み込み、見出し・シート・一覧、現在地・追いかけ・向き、近づいたときの反応
 - `docs/layers.js` … 情報レイヤー（目印・道路名・丁目と番地）と、文字が重ならないための置き方
 - `docs/roads.js` … 細い道
@@ -136,12 +159,16 @@
 - `tools/build_layers.py` … `layers.json` を作る（番地は国土交通省「位置参照情報」街区レベル 東京都 24.0a の代表点、それ以外は OSM）
 - `tools/fetch_overture.py` … Overture Maps のお店データを大泉5町のまわりだけ取り出す（duckdb が必要）
 - `tools/build_small.py` … `small.json` を作る（OSM の service / footway / path など。駐車場の通路と歩道の重複は除く）
+- `tools/fetch_buildings.py` / `tools/render_base.html` / `tools/render_tile.mjs` … AI に渡す元の地図の画像を作る（上の「絵地図」）
+- `tools/pixelize.py` … AI の絵をドット1つ＝1画素・12色の小さな PNG にする（`art_src/` へ）
+- `tools/fade_art.py` … 絵地図を町の境界の外で薄くする（`art_src/` → `docs/art/`）
 - OSM の元データ（Overpass でダウンロードしたもの）は残していない。作り直すときは取り直す
 
 ## データの出どころ
 
 - 販売所: 練馬区「農産物ふれあいガイド」令和7年（2025年）11月発行の一覧表を目で読み取った。読み違いがあり得る
   - 名前は屋号があれば屋号、なければ「〇〇さんの直売所」。電話番号は載せない
+  - 同じ名前が複数あるときは、見分けられるところまで場所を付ける（例:「加藤さんの直売所（南大泉3丁目）」「関口さんの直売所（東大泉7-2）」。`build_map.py` の `with_area`、2026-10-26）
   - 無人販売所 = ガイドの「野菜無人販売機」欄に印があるもの
   - No.66（大泉学園町4-2922-5）は丁目単位のおおよその位置
 - 緯度経度: 国土地理院の住所検索

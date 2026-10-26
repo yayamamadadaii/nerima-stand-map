@@ -1,7 +1,8 @@
 <!doctype html>
 <!-- AI に渡す元の地図画像を作るページ（公開しない。手元のサーバーで開く）
-     使い方: docs/ を配信して docs/emap/render.html にこのファイルを、docs/emap/render_bld.json に建物の形を置き、
-     render.html?lng=139.5866&lat=35.7520 を 768×1024・1.5倍で開いて画面を撮る。四隅の位置はページのタイトルに出る -->
+     使い方: docs/_render/render.html にこのファイルを、docs/_render/render_bld.json に建物の形（tools/fetch_buildings.py）を置き、
+     docs/ を手元で配信して render.html?lng=139.5866&lat=35.7520 を tools/render_tile.mjs で撮る（768×1024・1.5倍）。
+     四隅の位置はページのタイトルに出る。docs/_render/ はコミットしない（.gitignore） -->
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <style>html,body,#map{height:100%;margin:0}</style></head>
