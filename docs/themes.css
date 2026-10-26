@@ -13,7 +13,7 @@ html.retro .pin {
   transition: transform var(--motion-fast) steps(2);
 }
 html.retro .pin-art { display: flex; align-items: center; justify-content: center; }
-/* 広く見たときのピン: ドット絵の球（落ち着いた赤・ハイライトと影・白いふち。themes.js の ball） */
+/* 広く見たときのピン: ドット絵の球（トマトと同じ赤・ハイライトと影・白いふち。themes.js の ball） */
 html.retro .pin-dot { display: none; }
 html.retro.far .pin-art > .px { display: none; }
 html.retro.far .pin-dot { display: block; }
