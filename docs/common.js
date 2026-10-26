@@ -2,6 +2,10 @@
 // 地図ライブラリごとの違いは adapter に閉じ込める（今は map.js = MapLibre GL）。
 window.StandApp = (() => {
   const NEAR_M = 60;          // この距離まで近づいたら「すぐ近く」を出す
+  // 「情報の修正・掲載の取り下げ」の連絡先（Googleフォーム。だいきが作る、2026-10-26 決定）。空のあいだはリンクを出さない
+  const FORM_URL = '';        // 例: https://docs.google.com/forms/d/e/xxxx/viewform
+  const FORM_ENTRY = '';      // 「対象の販売所・農園」欄の entry 番号（例: entry.123456）。あれば詳細から開いたときに名前を入れておく
+  const formUrl = (s) => FORM_URL + (s && FORM_ENTRY ? `?usp=pp_url&${FORM_ENTRY}=${encodeURIComponent(s.name + '（' + s.address + '）')}` : '');
   const $ = (id) => document.getElementById(id);
   const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const T = window.Theme;   // ファミコン風の試作（themes.js）。null なら通常の見た目
@@ -155,7 +159,8 @@ window.StandApp = (() => {
         el('a', { class: 'btn btn-primary', href: routeUrl(s), target: '_blank', rel: 'noopener' }, icon('nav'), T ? T.routeLabel : 'Googleマップで経路を見る'),
         el('div', { class: 'sub' }, [
           inGuide ? '販売所の情報は2025年11月発行の区のガイドより。開いていないこともあります。' : '',
-          s.harvest ? '収穫体験は区の「練馬果樹あるファーム」「ねりまベジかるファーム」（2026年）より。開く日や時間は年によって変わるので、行く前に農園に確かめてください。' : ''].join('')));
+          s.harvest ? '収穫体験は区の「練馬果樹あるファーム」「ねりまベジかるファーム」（2026年）より。開く日や時間は年によって変わるので、行く前に農園に確かめてください。' : ''].join('')),
+        FORM_URL ? el('a', { class: 'sub', href: formUrl(s), target: '_blank', rel: 'noopener' }, '情報のちがい・掲載の取り下げを知らせる') : null);
     }
     function openList() {
       const from = st.me && inArea(st.me) ? st.me : adapter.center();
@@ -316,6 +321,7 @@ window.StandApp = (() => {
             el('li', {}, '個人の趣味で作っている地図です。行き届かない所や小さな不具合があるかもしれませんが、ご了承ください。'),
             el('li', {}, '販売所の情報は、練馬区「農産物ふれあいガイド」（2025年11月発行）をもとにしています。お休み・品切れ・閉店していることもあります。'),
             el('li', {}, '販売所の多くは農家さんのお宅の前です。敷地に入らない、代金はきちんと払うなど、マナーを守ってご利用ください。'))),
+        FORM_URL ? el('p', { class: 'note sub' }, '掲載内容のまちがいや、掲載をやめてほしいときは ', el('a', { href: formUrl(), target: '_blank', rel: 'noopener' }, 'こちらのフォーム'), ' からお知らせください。') : null,
         el('button', { class: 'btn btn-primary', type: 'button', onclick: closeSheet }, '地図を見る'));
     }
     const credit = document.querySelector('.credit');
