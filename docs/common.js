@@ -285,7 +285,28 @@ window.StandApp = (() => {
       if (perm && perm.state === 'granted') startWatch();
     } catch (e) {}
 
+    // ---------- このマップについて（はじめて開いたときに1回だけ出す。下の「このマップについて」でいつでも開ける） ----------
+    const ABOUT_KEY = 'about-seen-v1';
+    function openAbout() {
+      try { localStorage.setItem(ABOUT_KEY, '1'); } catch (e) {}
+      showSheet('about',
+        head(document.querySelector('.top h1')?.textContent || document.title, 'このマップについて'),
+        el('p', { class: 'note' }, '大泉学園のまわり（大泉5町）にある、野菜の無人販売所と農家さんの直売所をまとめた地図です。散歩のついでに、とれたての野菜に出会うきっかけになればうれしいです。'),
+        el('div', { class: 'stack', style: 'gap:4px' },
+          el('div', { class: 'sub' }, 'ご利用の前に'),
+          el('ul', { class: 'about-list' },
+            el('li', {}, '個人の趣味で作っている地図です。行き届かない所や小さな不具合があるかもしれませんが、ご了承ください。'),
+            el('li', {}, '販売所の情報は、練馬区「農産物ふれあいガイド」（2025年11月発行）をもとにしています。お休み・品切れ・閉店していることもあります。'),
+            el('li', {}, '販売所の多くは農家さんのお宅の前です。敷地に入らない、代金はきちんと払うなど、マナーを守ってご利用ください。'))),
+        el('button', { class: 'btn btn-primary', type: 'button', onclick: closeSheet }, '地図を見る'));
+    }
+    const credit = document.querySelector('.credit');
+    if (credit) credit.prepend(el('a', { href: '#', onclick: (e) => { e.preventDefault(); openAbout(); } }, 'このマップについて'), ' ／ ');
+
     renderPins(); checkNear();
+    let seen = false;
+    try { seen = localStorage.getItem(ABOUT_KEY) === '1'; } catch (e) {}
+    if (!seen) openAbout();
   }
 
   return { start, css, distM };
