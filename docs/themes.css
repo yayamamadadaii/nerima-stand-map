@@ -13,7 +13,7 @@ html.retro .pin {
   transition: transform var(--motion-fast) steps(2);
 }
 html.retro .pin-art { display: flex; align-items: center; justify-content: center; }
-html.retro .pin-dot { display: none; width: 14px; height: 14px; border-radius: 50%; box-sizing: border-box; border: 2px solid #FFFDF5; background: #3F8F3A; }
+html.retro .pin-dot { display: none; width: 14px; height: 14px; border-radius: 50%; box-sizing: border-box; border: 2px solid #FFFDF5; background: #F0483A; }   /* 木箱のピンのトマトと同じ赤（だいき指示 2026-10-26） */
 html.retro.far .pin-art .px { display: none; }
 html.retro.far .pin-dot { display: block; }
 html.retro.far .pin.near::after { display: none; }
