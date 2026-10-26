@@ -9,7 +9,7 @@
 <!-- タイトルだけポップな書体（だいき選択 2026-10-26）。使う文字だけ読み込む。タイトルを変えたら text= も直す -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@800&text=%E9%81%93%E3%81%AE%E3%83%9E%E3%83%AB%E3%82%B7%E3%82%A7MAP%E5%A4%A7%E6%B3%89%E5%AD%A6%E5%9C%92%E7%89%88&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script>window.APP_V = "202610261420";</script>
+<script>window.APP_V = "202610261442";</script>
 <script>
   // GitHub Pages はページを最大10分スマホに残すので、新しい版が出ていたら1回だけ読み直す
   fetch((window.APP_BASE || '') + 'version.txt?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(v => {
@@ -19,12 +19,12 @@
     location.reload();
   }).catch(() => {});
 </script>
-<link rel="stylesheet" href="style.css?v=202610261420">
+<link rel="stylesheet" href="style.css?v=202610261442">
 <script>
   // 普段はファミコン本体風。simple/ のページか ?theme=simple のときだけシンプルな見た目
   if ((window.APP_THEME || new URLSearchParams(location.search).get('theme') || 'fami') === 'fami') document.documentElement.classList.add('retro', 't-fami');
 </script>
-<link rel="stylesheet" href="themes.css?v=202610261420">
+<link rel="stylesheet" href="themes.css?v=202610261442">
 <style>
   .leaflet-container { font-family: var(--font); background: var(--map-land); }
   .lbl { transform: translate(-50%, -50%); }
@@ -54,10 +54,10 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="themes.js?v=202610261420"></script>
-<script src="common.js?v=202610261420"></script>
-<script src="roads.js?v=202610261420"></script>
-<script src="layers.js?v=202610261420"></script>
+<script src="themes.js?v=202610261442"></script>
+<script src="common.js?v=202610261442"></script>
+<script src="roads.js?v=202610261442"></script>
+<script src="layers.js?v=202610261442"></script>
 <script>
 // Leaflet で真上から見た平らな地図を描く。軽さ優先
 (() => {

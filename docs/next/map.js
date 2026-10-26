@@ -5,7 +5,7 @@
   const LZ = 1;                       // Leaflet のズームとの差
   const FAR_Z = 15 - LZ;              // これより広く見ているときは色違いの丸のピン
   const SMALL_Z = 15.5 - LZ;          // 細い道を出し始めるズーム
-  let map, area, layers, smallLoaded = false;
+  let map, area, layers, smallLoaded = false, touching = false;
   const pinMarkers = new Map();
   let meMarker, stations = [];
 
@@ -123,6 +123,12 @@
       // 少し触れただけでは追いかけをやめない。40px 以上動かしたときだけ
       let dragFrom;
       map.on('dragstart', () => { dragFrom = map.getCenter(); });
+      // ピンチやダブルタップで拡大・縮小したら、すぐ追いかけをやめる（追いかけの動きとぶつかってカクつくため。だいき指摘 2026-10-26）
+      map.on('zoomstart', (e) => { if (e.originalEvent) onUserMove(); });
+      // 指が地図に触れている間は、追いかけで地図を動かさない
+      const box0 = map.getContainer();
+      box0.addEventListener('touchstart', () => { touching = true; }, { passive: true });
+      for (const t of ['touchend', 'touchcancel']) box0.addEventListener(t, (e) => { touching = e.touches.length > 0; }, { passive: true });
       map.on('drag', () => {
         if (!dragFrom) return;
         const p = map.project(dragFrom), cx = map.getContainer().clientWidth / 2, cy = map.getContainer().clientHeight / 2;
@@ -132,6 +138,8 @@
       map.on('zoom', setFar);
       setFar();
       map.on('zoomend', () => { if (map.getZoom() >= SMALL_Z - 0.5) loadSmall(); });
+      // 細い道は、拡大したときに読み込むと一瞬止まるので、最初の表示が終わって手が空いたら先に読んでおく
+      (window.requestIdleCallback || ((f) => setTimeout(f, 1500)))(() => loadSmall());
       map.on('moveend', loadArt);
       // 読み込みに失敗した絵は外しておき、次に地図を動かしたときに読み直す
       map.on('error', (e) => {
@@ -166,7 +174,11 @@
     },
     setMe(p) { meMarker.setLngLat([p.lng, p.lat]); if (!meMarker._map) { meMarker.addTo(map); meMarker.getElement().style.zIndex = 3; } },
     follow(p) {
+      if (touching) return;
       const z = map.getZoom() < 16.5 - LZ ? 17 - LZ : map.getZoom();
+      // 向きが変わっただけなど、ほとんど動かないときは地図を動かさない（動かしすぎるとカクつく）
+      const a = map.project([p.lng, p.lat]), c = map.project(map.getCenter());
+      if (Math.hypot(a.x - c.x, a.y - c.y) < 3 && Math.abs(z - map.getZoom()) < 0.01) return;
       map.easeTo({ center: [p.lng, p.lat], zoom: z, duration: 600 });
     },
     setHeading() {},

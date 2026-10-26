@@ -69,7 +69,7 @@ window.MapLayers = (() => {
     }
     // 文字の大きさの見積もり（12px の日本語 ≒ 1文字12px）
     function box(it, pt) {
-      const w = it.text.length * (it.cls === 'lbl-blk' ? 7.5 : 12) + 12;
+      const w = it.text.length * (it.cls === 'lbl-blk' ? 7.5 : it.cls === 'lbl-road' ? 15 : 12) + 12;
       const h = 20;
       return [pt.x - w / 2, pt.y - h / 2, pt.x + w / 2, pt.y + h / 2];
     }

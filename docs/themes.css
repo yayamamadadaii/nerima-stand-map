@@ -18,8 +18,8 @@ html.retro .pin-dot { display: none; width: 14px; height: 14px; border-radius: 5
 html.retro.far .pin-art .px { display: none; }
 html.retro.far .pin-dot { display: block; }
 html.retro.far .pin.near::after { display: none; }
-/* 詳細の種類ラベル: 無人 = 緑（丸のピンと同じ色）、お店の人がいる = えんじ */
-html.t-fami .tag { background: #3F8F3A; color: #FFFDF5; }
+/* 詳細の種類ラベル: 無人 = 深い緑（キーカラー）、お店の人がいる = 茶色。どちらも白い文字とのコントラスト4.5以上 */
+html.t-fami .tag { background: #2E6B34; color: #FFFDF5; }
 html.t-fami .tag.tag-plain { background: #F4EEDC; color: #4A4038; }
 html.retro .pin.sel { transform: scale(1.4); background: transparent; }
 /* 近づいたら「ぴょこっ」と跳ねる: 一度つぶれてから跳ぶ（だいき指定 2026-10-22） */
@@ -48,27 +48,28 @@ html.retro .btn-primary::before { content: "▶"; }
 html.retro .seg button[aria-pressed="true"]::before { content: "▶ "; }
 
 /* ---------- ファミコン本体風（色味は c2「コントローラー」案を採用、2026-10-22） ----------
-   上はクリーム地にえんじの文字（本体上面）、タブはえんじの帯で選択中は金色。ラベルは黒い文字と黒い枠でくっきり */
+   上はクリーム地にキーカラーの文字（本体上面）。ラベルは黒い文字と黒い枠でくっきり。
+   キーカラーは 2026-10-26 にえんじ #9E1B22 から深い緑 #2E6B34 に変えた（野菜のイメージ。だいき指示） */
 html.t-fami {
-  --bg: #F4EEDC; --surface: #FFFDF5; --line: #9E1B22; --text: #1A1A1A; --text-sub: #4A4038;
-  --accent: #9E1B22; --accent-text: #9E1B22; --accent-soft: rgba(158, 27, 34, 0.1);
+  --bg: #F4EEDC; --surface: #FFFDF5; --line: #2E6B34; --text: #1A1A1A; --text-sub: #4A4038;
+  --accent: #2E6B34; --accent-text: #2E6B34; --accent-soft: rgba(46, 107, 52, 0.1);
   --map-land: #EFE6D2; --map-farm: #D6DDA8; --map-park: #C3D99B; --map-water: #9CC4E4;
   --map-road: #FFFDF5; --map-road-casing: #CDBB98; --map-road-major-casing: #B39B70;
-  --map-rail: #5A4A3A; --map-border: #9E1B22;
+  --map-rail: #5A4A3A; --map-border: #2E6B34;
   color-scheme: light;
 }
-html.t-fami .top { background: #F3EBDD; border-bottom: 6px solid #9E1B22; }
-html.t-fami .top h1 { color: #9E1B22; letter-spacing: 0.08em; font-family: 'M PLUS Rounded 1c', var(--font); font-weight: 800; line-height: 1.2; }
+html.t-fami .top { background: #F3EBDD; border-bottom: 6px solid #2E6B34; }
+html.t-fami .top h1 { color: #2E6B34; letter-spacing: 0.08em; font-family: 'M PLUS Rounded 1c', var(--font); font-weight: 800; line-height: 1.2; }
 html.t-fami .top h1 small { letter-spacing: 0.02em; }
 html.t-fami .top .btn-secondary { background: #1A1A1A; border-color: #1A1A1A; color: #F3EBDD; }
-html.t-fami .seg { background: #9E1B22; }
+html.t-fami .seg { background: #2E6B34; }
 html.t-fami .seg button { color: #F3EBDD; }
 html.t-fami .seg button[aria-pressed="true"] { background: #D4A944; color: #1A1A1A; }
 html.t-fami .seg .num { color: inherit; }
 html.t-fami .sheet, html.t-fami .near-card, html.t-fami .layer-panel, html.t-fami .banner { border: 3px solid var(--line); }
 html.t-fami .layer-panel { box-shadow: none; }
 html.t-fami .btn-secondary { border: 2px solid var(--line); color: var(--line); }
-html.t-fami .btn-primary { background: #9E1B22; border: 2px solid #1A1A1A; }
+html.t-fami .btn-primary { background: #2E6B34; border: 2px solid #1A1A1A; }
 /* 地図の文字は枠で囲まず、地面の色で縁取って読ませる（Googleマップと同じ考え方。だいき指摘 2026-10-22） */
 html.t-fami .lbl, html.t-fami .lbl2 {
   background: transparent; border: 0; padding: 0; border-radius: 0;
@@ -76,7 +77,7 @@ html.t-fami .lbl, html.t-fami .lbl2 {
                1px 0 0 #FFFDF5, -1px 1px 0 #FFFDF5, 0 1px 0 #FFFDF5, 1px 1px 0 #FFFDF5, 0 0 3px #FFFDF5;
 }
 html.t-fami .lbl-st { color: #1A1A1A; font-size: var(--fs-small); font-weight: 700; }
-html.t-fami .lbl-town { color: #9E1B22; font-size: var(--fs-small); font-weight: 700; }
+html.t-fami .lbl-town { color: #2E6B34; font-size: var(--fs-small); font-weight: 700; }
 /* 目印は種類ごとに文字の色をやんわり変える（Googleマップ参照）。アイコンは付けない */
 html.t-fami .lbl-poi { color: #3A3028; font-weight: 600; }
 html.t-fami .k-park { color: #3F7A33; }
@@ -85,10 +86,13 @@ html.t-fami .k-post, html.t-fami .k-police, html.t-fami .k-fire, html.t-fami .k-
 html.t-fami .k-conv, html.t-fami .k-super, html.t-fami .k-drug, html.t-fami .k-variety { color: #A8541E; }
 html.t-fami .k-food { color: #B0463A; }
 html.t-fami .k-bank, html.t-fami .k-fuel { color: #4E5F80; }
-/* 交差点名: 道路名より少し小さく、こげ茶 */
-html.t-fami .lbl-cross { color: #5A4A3A; font-weight: 600; }
-html.t-fami .lbl-road { color: #6B5A4A; font-weight: 600; }
+/* 道路名は一回り大きく濃い茶色の太字で目立たせ、交差点名は小さく灰色がかった細めの字にして見分ける（だいき指摘 2026-10-26） */
+html.t-fami .lbl-cross { color: #7A6E60; font-weight: 400; }
+html.t-fami .lbl-road { color: #4A3420; font-weight: 700; font-size: var(--fs-body); }
 html.t-fami .lbl-chome { color: #1A1A1A; font-weight: 600; }
 html.t-fami .lbl-blk { color: #6B5A4A; }
 html.t-fami .row { border-bottom-color: #E2D6BC; }
-html.t-fami .tag.tag-manned { background: #9E1B22; color: #FFFDF5; }
+html.t-fami .tag.tag-manned { background: #8A4F1E; color: #FFFDF5; }
+/* 情報レイヤーのスイッチ: オフは色を付けない（オフが分かりにくい。だいき指摘 2026-10-26） */
+html.t-fami .toggle input { background: #D8CFBC; }
+html.t-fami .toggle input:checked { background: var(--accent); }
