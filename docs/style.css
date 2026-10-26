@@ -46,6 +46,7 @@ button { font: inherit; color: inherit; }
 }
 .top-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 h1 { margin: 0; font-size: var(--fs-h3); font-weight: 600; line-height: var(--lh-heading); }
+.top h1 small { display: block; font-size: var(--fs-small); }   /* 「大泉学園版」は2行目に小さく */
 .seg { display: flex; background: var(--bg); border-radius: var(--radius-control); padding: 4px; gap: 4px; }
 .seg button {
   flex: 1; height: 32px; border: 0; border-radius: var(--radius-small); background: transparent;
@@ -148,9 +149,7 @@ h1 { margin: 0; font-size: var(--fs-h3); font-weight: 600; line-height: var(--lh
   transition: transform var(--motion-fast);
 }
 .pin .icon { width: 18px; height: 18px; }
-.pin.other { color: var(--text-sub); border-color: var(--text-sub); }
 .pin.sel { transform: scale(1.3); background: var(--accent); color: #fff; border-color: var(--surface); }
-.pin.other.sel { background: var(--text-sub); }
 .pin.near:not(.sel) { animation: bob 1.2s ease-in-out infinite; }
 @keyframes bob { 50% { transform: translateY(-4px); } }
 
@@ -217,7 +216,6 @@ h1 { margin: 0; font-size: var(--fs-h3); font-weight: 600; line-height: var(--lh
 .row:last-child { border-bottom: 0; }
 .row:active { background: var(--bg); }
 .row-icon { color: var(--accent-text); display: flex; }
-.row-icon.other { color: var(--text-sub); }
 .row-main { flex: 1; min-width: 0; }
 .row-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row-sub { color: var(--text-sub); font-size: var(--fs-small); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -13,23 +13,12 @@ html.retro .pin {
   width: 36px; height: 36px; border: 0; border-radius: 0; background: transparent;
   transition: transform var(--motion-fast) steps(2);
 }
-html.retro .pin.other { background: transparent; }
 html.retro .pin-art { display: flex; align-items: center; justify-content: center; }
 html.retro .pin-dot { display: none; width: 14px; height: 14px; border-radius: 50%; box-sizing: border-box; border: 2px solid #FFFDF5; background: #3F8F3A; }
-html.retro .pin.other .pin-dot { background: #9E1B22; }
 html.retro.far .pin-art .px { display: none; }
 html.retro.far .pin-dot { display: block; }
 html.retro.far .pin.near::after { display: none; }
-/* 丸のピンの色の見方（広く見ているときだけ） */
-.legend { display: none; }
-html.retro.far .legend {
-  display: flex; gap: 12px; position: absolute; z-index: 440; bottom: calc(36px + env(safe-area-inset-bottom, 0px)); left: max(8px, env(safe-area-inset-left, 0px));
-  background: #FFFDF5; border: 2px solid #1A1A1A; padding: 4px 8px; font-size: var(--fs-small); font-weight: 600;
-}
-html.retro.far .legend span { display: flex; align-items: center; gap: 4px; }
-html.retro .legend .pin-dot { display: block; }
-html.retro .legend .pin-dot.other { background: #9E1B22; }
-/* 詳細の種類ラベルも丸のピンと同じ色にする */
+/* 詳細の種類ラベル: 無人 = 緑（丸のピンと同じ色）、お店の人がいる = えんじ */
 html.t-fami .tag { background: #3F8F3A; color: #FFFDF5; }
 html.t-fami .tag.tag-plain { background: #F4EEDC; color: #4A4038; }
 html.retro .pin.sel { transform: scale(1.4); background: transparent; }
@@ -69,7 +58,8 @@ html.t-fami {
   color-scheme: light;
 }
 html.t-fami .top { background: #F3EBDD; border-bottom: 6px solid #9E1B22; }
-html.t-fami .top h1 { color: #9E1B22; letter-spacing: 0.08em; }
+html.t-fami .top h1 { color: #9E1B22; letter-spacing: 0.08em; font-family: 'M PLUS Rounded 1c', var(--font); font-weight: 800; line-height: 1.2; }
+html.t-fami .top h1 small { letter-spacing: 0.02em; }
 html.t-fami .top .btn-secondary { background: #1A1A1A; border-color: #1A1A1A; color: #F3EBDD; }
 html.t-fami .seg { background: #9E1B22; }
 html.t-fami .seg button { color: #F3EBDD; }

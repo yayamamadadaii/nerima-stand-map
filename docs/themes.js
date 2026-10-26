@@ -15,17 +15,20 @@ window.Theme = (() => {
     K: '#3A2A1A', W: '#FFFDF5', R: '#E43B44', O: '#F7962F', Y: '#F8D040', G: '#4CAF3A', L: '#8FD45A', P: '#7A4FC8',
     B: '#6B3A1A', N: '#C98A4A', C: '#F6E7C4', S: '#FCD8A8', U: '#2F6FD8', E: '#9A9A9A', H: '#F8B800', V: '#0058F8', T: '#D9A55B'
   };
+  // カイロソフト風のドット絵の色（2026-10-26〜。ほかのドット絵もあとでこちらにそろえる）
+  const PAL_KAIRO = {
+    K: '#4A2E2A', w: '#FFFFFF', W: '#FFFFFF', R: '#F0483A', r: '#FF9C8A', q: '#C02A2A', O: '#FF9A2E', Y: '#FFD43A', G: '#5CC84A', g: '#2E8A3A',
+    L: '#A8E06A', l: '#D8F5A8', t: '#78B840', P: '#8A4AC8', N: '#D08A4A', n: '#F0B878', D: '#9A5A30'
+  };
+  const SPRITE_PAL = { crate: PAL_KAIRO };
   const SPRITES = {
-    // 無人販売所: 竹かごに野菜が山盛り、横に値札（2026-10-22 候補④を採用）
-    basket: [
-      '....G..L........', '...KRKKOK...KKKK', '..KRRRKOOK..KWWK', '..KRWRKOOOK.KWKK', '.KLLRRKOOOGKKWWK', '.KLLLLGGGGGK.KK.', 'KKKKKKKKKKKKK.K.',
-      'KTNTNTNTNTNTK.K.', 'KNTNTNTNTNTNK.K.', '.KTNTNTNTNTK..K.', '.KNTNTNTNTNK..K.', '..KKKKKKKKK..KKK'],
-    // 直売所: しま模様のテントの下に、お店の人
-    tent: [
-      '...KKKKKKKKKK...', '..KRRWWRRWWRRK..', '.KRRWWRRWWRRWWK.', 'KRRWWRRWWRRWWRRK',
-      'KKKKKKKKKKKKKKKK', '.K....BBBB....K.', '.K...BSSSSB...K.', '.K...SKSSKS...K.',
-      '.K....SKKS....K.', '.KRR.UUUUUU.LL.K', 'KKKKKKKKKKKKKKKK', 'KNNNNNNNNNNNNNNK',
-      'KNNNNNNNNNNNNNNK', '.KN..........NK.', '.KK..........KK.'],
+    // 販売所: 木箱に果物と野菜の盛り合わせ（2026-10-26 だいき選択。カイロソフト風、まわりに白いふち）。色は PAL_KAIRO
+    crate: [
+      '..www...wwww..wwww......', '.wwKww.wwKKw.wwKKww.....', '.wKLKwwwKGKw.wKYYKw..www', '.wKLGKwKGGKwwwKYYKwwwwGw', '.wwKGGKKGGKwwKYYYKwKKgww',
+      '..wKGGKKGGKwwKYYYKKPPPKw', '..wKGKKKGGKKgGKYYKPPPPKw', '..wKKlLLKKrrGRRKYKPPPPKw', '.wwKlLLLLKrWRRRKKPPPPKww', '.wKlLLLLKrRRRRRRKPKgKKw.',
+      '.wKLLLGLKRRRRRRqKKOOOKww', '.wKLLGLGLKRRRRqKKOOOOOKw', '.wwKLLLLtKRRRqqKKOOOOOKw', 'wwwKKLLtKKKKKKKwwKOOOKww', 'wKKKKKKKKKKKKKKKKKKKKKKw',
+      'wKnnnnnnnnnnnnnnnnnnnnKw', 'wKNNNNNDNNNNDNNNNDNNNNKw', 'wKDDDDDDDDDDDDDDDDDDDDKw', 'wKNNNNNDNNNNDNNNNDNNNNKw', 'wKKKKKKKKKKKKKKKKKKKKKKw',
+      'wwwwwwwwwwwwwwwwwwwwwwww'],
     hero1: [
       '...HHHHHH...', '..HHHHHHHH..', 'HHHHHHHHHHHH', '..KSSSSSSK..', '..SSKSSKSS..', '..SSSSSSSS..', '...SSSSSS...',
       '..VVVVVVVV..', '.SVVWVVWVVS.', '.SVVVVVVVVS.', '..VVVVVVVV..', '..BBB..BBB..', '..KKK..KKK..'],
@@ -34,14 +37,14 @@ window.Theme = (() => {
       '..VVVVVVVV..', '.SVVWVVWVVS.', '.SVVVVVVVVS.', '..VVVVVVVV..', '..BBB...BB..', '..KK....KKK.']
   };
   function sprite(key, scale = 2) {
-    const rows = SPRITES[key], w = rows[0].length, h = rows.length;
+    const rows = SPRITES[key], pal = SPRITE_PAL[key] || PAL, w = rows[0].length, h = rows.length;
     let rects = '';
     rows.forEach((r, y) => {
       // 同じ色が続く横一列は1つの四角にまとめる
       for (let x = 0; x < w;) {
         const c = r[x];
         let n = 1; while (x + n < w && r[x + n] === c) n++;
-        if (c !== '.') rects += `<rect x="${x}" y="${y}" width="${n}" height="1" fill="${PAL[c]}"/>`;
+        if (c !== '.') rects += `<rect x="${x}" y="${y}" width="${n}" height="1" fill="${pal[c]}"/>`;
         x += n;
       }
     });
@@ -54,13 +57,13 @@ window.Theme = (() => {
   return {
     name,
     // ピン: 拡大しているときはドット絵、広く見ているとき（html.far）は色違いの丸（themes.css で切り替え）
-    pin: (s) => {
+    pin: () => {
       const w = document.createElement('span');
       w.className = 'pin-art';
-      w.innerHTML = sprite(s.unmanned ? 'basket' : 'tent', 2.25) + '<span class="pin-dot"></span>';
+      w.innerHTML = sprite('crate', 1.5) + '<span class="pin-dot"></span>';
       return w;
     },
-    icon: (s) => html(sprite(s.unmanned ? 'basket' : 'tent', 1.75)),
+    icon: () => html(sprite('crate', 1.25)),
     me: () => {
       const d = document.createElement('div');
       d.className = 'me me-px';

@@ -73,13 +73,13 @@ window.StandApp = (() => {
       heading: null,       // 度。北=0
       follow: false, watching: false, nearNo: null
     };
-    // 無人販売所と直売所は分けずに全部出し、ピンの絵で見分ける（2026-10-22 タブを廃止）
+    // 無人販売所と直売所は分けずに「販売所」として全部同じピンで出す。無人か有人かは詳細で分かる（2026-10-26 だいき）
     const visible = () => true;
 
     // ピン
     const pins = new Map();
     for (const s of stands) {
-      const p = el('div', { class: 'pin' + (s.unmanned ? '' : ' other'), role: 'button', 'aria-label': s.name }, T ? T.pin(s) : icon(s.kind));
+      const p = el('div', { class: 'pin', role: 'button', 'aria-label': s.name }, T ? T.pin(s) : icon(s.kind));
       p.addEventListener('click', (e) => { e.stopPropagation(); openDetail(s.no); });
       pins.set(s.no, p);
     }
@@ -129,7 +129,7 @@ window.StandApp = (() => {
       showSheet('detail',
         head(s.name, s.address),
         el('div', { class: 'meta-line' },
-          el('span', { class: s.unmanned ? 'tag' : 'tag tag-manned' }, s.unmanned ? '無人販売所' : '直売所'),
+          el('span', { class: s.unmanned ? 'tag' : 'tag tag-manned' }, s.unmanned ? '無人' : 'お店の人がいる'),
           d != null ? el('span', { class: 'near-dist' }, `ここから ${fmtDist(d)}`) : null,
           el('span', { class: 'sub' }, `区のガイド No.${s.no}`)),
         s.note ? el('p', { class: 'note' }, s.note) : null,
@@ -143,10 +143,10 @@ window.StandApp = (() => {
       const from = st.me && inArea(st.me) ? st.me : adapter.center();
       const rows = stands.filter(visible).map(s => ({ s, d: distM(from, s) })).sort((a, b) => a.d - b.d);
       showSheet('list',
-        head(`${rows.length} か所`, st.me && inArea(st.me) ? '今いる場所から近い順' : '地図の中心から近い順'),
+        head(`${rows.length} か所の販売所`, st.me && inArea(st.me) ? '今いる場所から近い順' : '地図の中心から近い順'),
         el('div', { class: 'list' }, rows.map(({ s, d }) =>
           el('button', { class: 'row', type: 'button', onclick: () => { pauseFollow(); adapter.flyTo(s); openDetail(s.no); } },
-            el('span', { class: 'row-icon' + (s.unmanned ? '' : ' other') }, T ? T.icon(s) : icon(s.kind)),
+            el('span', { class: 'row-icon' }, T ? T.icon(s) : icon(s.kind)),
             el('span', { class: 'row-main' },
               el('div', { class: 'row-title' }, s.name),
               el('div', { class: 'row-sub' }, `${s.address.replace('練馬区', '')}　${s.items.slice(0, 4).join('・')}`)),
@@ -269,7 +269,7 @@ window.StandApp = (() => {
       if (no !== st.nearNo) { st.nearNo = no; renderPins(); if (no && navigator.vibrate) navigator.vibrate(30); }
       if (!best || st.sheet) { card.hidden = true; return; }
       card.replaceChildren(
-        el('span', { class: 'row-icon' + (best.s.unmanned ? '' : ' other') }, T ? T.icon(best.s) : icon(best.s.kind)),
+        el('span', { class: 'row-icon' }, T ? T.icon(best.s) : icon(best.s.kind)),
         el('div', {}, el('div', { class: 'eyebrow' }, T ? T.nearEyebrow(best.s) : 'すぐ近くに販売所'), el('div', { class: 'title' }, best.s.name)),
         el('span', { class: 'near-dist' }, fmtDist(best.d)));
       card.onclick = () => openDetail(best.s.no);
@@ -290,8 +290,8 @@ window.StandApp = (() => {
     function openAbout() {
       try { localStorage.setItem(ABOUT_KEY, '1'); } catch (e) {}
       showSheet('about',
-        head(document.querySelector('.top h1')?.textContent || document.title, 'このマップについて'),
-        el('p', { class: 'note' }, '大泉学園のまわり（大泉5町）にある、野菜の無人販売所と農家さんの直売所をまとめた地図です。散歩のついでに、とれたての野菜に出会うきっかけになればうれしいです。'),
+        head(document.title, 'このマップについて'),
+        el('p', { class: 'note' }, '大泉学園のまわり（大泉5町）にある、野菜や果物の販売所（無人販売所や農家さんの直売所）をまとめた地図です。散歩のついでに、とれたての野菜に出会うきっかけになればうれしいです。'),
         el('div', { class: 'stack', style: 'gap:4px' },
           el('div', { class: 'sub' }, 'ご利用の前に'),
           el('ul', { class: 'about-list' },
