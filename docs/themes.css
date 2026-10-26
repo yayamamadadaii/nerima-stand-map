@@ -40,6 +40,8 @@ html.retro .me-px.walking .hero .px { animation-duration: 0.45s; }
 @keyframes px-a { 50% { visibility: hidden; } }
 @keyframes px-b { 0% { visibility: hidden; } 50% { visibility: visible; } }
 html.retro .me-px .me-cone { top: -64px; }
+/* 向きの扇形は青（緑の地図や絵地図に溶け込んだため。Googleマップと同じ考え方。だいき指摘 2026-10-26） */
+html.t-fami .me-cone { background: #2F6FD8; opacity: 0.5; }
 
 html.retro .row-icon .px, html.retro .near-card .px { width: 28px; height: auto; }
 html.retro .btn:active { transform: translate(1px, 1px); }
