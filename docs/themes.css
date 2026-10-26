@@ -13,8 +13,9 @@ html.retro .pin {
   transition: transform var(--motion-fast) steps(2);
 }
 html.retro .pin-art { display: flex; align-items: center; justify-content: center; }
-html.retro .pin-dot { display: none; width: 14px; height: 14px; border-radius: 50%; box-sizing: border-box; border: 2px solid #FFFDF5; background: #F0483A; }   /* 木箱のピンのトマトと同じ赤（だいき指示 2026-10-26） */
-html.retro.far .pin-art .px { display: none; }
+/* 広く見たときのピン: ドット絵の球（落ち着いた赤・ハイライトと影・白いふち。themes.js の ball） */
+html.retro .pin-dot { display: none; }
+html.retro.far .pin-art > .px { display: none; }
 html.retro.far .pin-dot { display: block; }
 html.retro.far .pin.near::after { display: none; }
 /* 詳細の種類ラベル: 無人 = 深い緑（キーカラー）、お店の人がいる = 茶色。どちらも白い文字とのコントラスト4.5以上 */

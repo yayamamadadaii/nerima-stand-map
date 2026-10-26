@@ -18,7 +18,9 @@ window.Theme = (() => {
     K: '#4A2E2A', w: '#FFFFFF', W: '#FFFFFF', R: '#F0483A', r: '#FF9C8A', q: '#C02A2A', O: '#FF9A2E', Y: '#FFD43A', G: '#5CC84A', g: '#2E8A3A',
     L: '#A8E06A', l: '#D8F5A8', t: '#78B840', P: '#8A4AC8', N: '#D08A4A', n: '#F0B878', D: '#9A5A30'
   };
-  const SPRITE_PAL = { crate: PAL_KAIRO };
+  // 広く見たときのピンの球: 落ち着いた赤に、ハイライトと影（だいき指示 2026-10-26）
+  const PAL_BALL = { w: '#FFFFFF', K: '#5A2420', R: '#C8463C', r: '#E8786A', h: '#FFFFFF', s: '#9A2F2A' };
+  const SPRITE_PAL = { crate: PAL_KAIRO, ball: PAL_BALL };
   const SPRITES = {
     // 販売所: 木箱に果物と野菜の盛り合わせ（2026-10-26 だいき選択。カイロソフト風、まわりに白いふち）。色は PAL_KAIRO
     crate: [
@@ -27,6 +29,7 @@ window.Theme = (() => {
       '.wKLLLGLKRRRRRRqKKOOOKww', '.wKLLGLGLKRRRRqKKOOOOOKw', '.wwKLLLLtKRRRqqKKOOOOOKw', 'wwwKKLLtKKKKKKKwwKOOOKww', 'wKKKKKKKKKKKKKKKKKKKKKKw',
       'wKnnnnnnnnnnnnnnnnnnnnKw', 'wKNNNNNDNNNNDNNNNDNNNNKw', 'wKDDDDDDDDDDDDDDDDDDDDKw', 'wKNNNNNDNNNNDNNNNDNNNNKw', 'wKKKKKKKKKKKKKKKKKKKKKKw',
       'wwwwwwwwwwwwwwwwwwwwwwww'],
+    ball: ['..wwwwwww..', '.wwKKKKKww.', 'wwKrrrrRKww', 'wKrhrrRRRKw', 'wKrrrRRRRKw', 'wKrrRRRRsKw', 'wKrRRRRssKw', 'wKRRRRsssKw', 'wwKRRsssKww', '.wwKKKKKww.', '..wwwwwww..'],
     hero1: [
       '...HHHHHH...', '..HHHHHHHH..', 'HHHHHHHHHHHH', '..KSSSSSSK..', '..SSKSSKSS..', '..SSSSSSSS..', '...SSSSSS...',
       '..VVVVVVVV..', '.SVVWVVWVVS.', '.SVVVVVVVVS.', '..VVVVVVVV..', '..BBB..BBB..', '..KKK..KKK..'],
@@ -58,7 +61,7 @@ window.Theme = (() => {
     pin: () => {
       const w = document.createElement('span');
       w.className = 'pin-art';
-      w.innerHTML = sprite('crate', 1.5) + '<span class="pin-dot"></span>';
+      w.innerHTML = sprite('crate', 1.5) + `<span class="pin-dot">${sprite('ball', 1.5)}</span>`;
       return w;
     },
     icon: () => html(sprite('crate', 1.25)),
