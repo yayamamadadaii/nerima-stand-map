@@ -39,6 +39,7 @@ window.StandApp = (() => {
   const FRUIT = /ブドウ|カキ|キウイ|ブルーベリー|ミカン|クリ|イチゴ|イチジク|ブンタン|レモン|ユズ|カンキツ|スイカ/;
   const FLOWER = /花|苗|シクラメン|パンジー|ビオラ|プリムラ|ペチュニア|マリーゴールド|ハボタン|ポインセチア|インパチェンス|ベゴニア|アジサイ|マーガレット|ロベリア|コスモス|宿根草|多肉|ペンタス|ストック|ぼたん/;
   function kind(s) {
+    if (!s.items.length) return 'veg';
     if (s.items.every(i => FLOWER.test(i))) return 'flower';
     if (s.items.every(i => FRUIT.test(i))) return 'fruit';
     return 'veg';
@@ -64,7 +65,8 @@ window.StandApp = (() => {
   async function start(adapter) {
     const D = await (await fetch(`${window.APP_BASE || ''}data/mapdata.json?v=${window.APP_V || ''}`)).json();
     const towns = D.towns.filter(t => t.name !== '西大泉町');
-    const stands = D.stands.map(s => ({ ...s, kind: kind(s) }));
+    // cat: sale = 販売所、harvest = 収穫体験だけ、both = 販売所で収穫体験もできる（2026-10-26）
+    const stands = D.stands.map(s => ({ ...s, kind: kind(s), cat: s.sale === false ? 'harvest' : s.harvest ? 'both' : 'sale' }));
     const inArea = (p) => towns.some(t => pointInRing(p, t.rings[0]));
 
     const st = {
@@ -96,6 +98,15 @@ window.StandApp = (() => {
     const meEl = T ? T.me() : el('div', { class: 'me' }, el('div', { class: 'me-ring' }), el('div', { class: 'me-cone', hidden: true }), el('div', { class: 'me-dot' }));
     const cone = meEl.querySelector('.me-cone');
 
+    // 広く見ているときの色の見方（ファミコン風のときだけ。球の色はピンと同じ）
+    if (T) document.querySelector('.map-wrap')?.append(el('div', { class: 'legend', 'aria-hidden': 'true' },
+      [['sale', '販売所'], ['harvest', '収穫体験'], ['both', '販売所＋収穫体験']].map(([c, t]) => {
+        const sp = el('span');
+        sp.innerHTML = T.ball(c);
+        sp.append(t);
+        return sp;
+      })));
+
     await adapter.init({ D, towns, stands, pins, meEl, css, onMapClick: closeSheet, onUserMove: () => pauseFollow() });
 
     // ---------- 見出し ----------
@@ -126,30 +137,37 @@ window.StandApp = (() => {
       if (!s) return;
       st.selected = no; renderPins();
       const d = st.me ? distM(st.me, s) : null;
+      const inGuide = s.sale !== false;   // 区のガイド（販売所）に載っている所
       showSheet('detail',
         head(s.name, s.address),
         el('div', { class: 'meta-line' },
-          el('span', { class: s.unmanned ? 'tag' : 'tag tag-manned' }, s.unmanned ? '無人' : 'お店の人がいる'),
+          inGuide ? el('span', { class: s.unmanned ? 'tag' : 'tag tag-manned' }, s.unmanned ? '無人' : 'お店の人がいる') : null,
+          s.harvest ? el('span', { class: 'tag tag-harvest' }, '収穫体験') : null,
           d != null ? el('span', { class: 'near-dist' }, `ここから ${fmtDist(d)}`) : null,
-          el('span', { class: 'sub' }, `区のガイド No.${s.no}`)),
+          inGuide ? el('span', { class: 'sub' }, `区のガイド No.${s.no}`) : null),
         s.note ? el('p', { class: 'note' }, s.note) : null,
-        el('div', { class: 'stack', style: 'gap:4px' },
+        s.harvest ? el('div', { class: 'stack', style: 'gap:4px' },
+          el('div', { class: 'sub' }, 'できる収穫体験'),
+          el('ul', { class: 'about-list' }, s.harvest.map(h => el('li', {}, `${h.what}（${h.season}${h.reserve ? '・予約が必要' : ''}）`)))) : null,
+        s.items.length ? el('div', { class: 'stack', style: 'gap:4px' },
           el('div', { class: 'sub' }, '主な品目（時期によって変わります）'),
-          el('div', { class: 'tags' }, s.items.map(i => el('span', { class: 'tag tag-plain' }, i)))),
+          el('div', { class: 'tags' }, s.items.map(i => el('span', { class: 'tag tag-plain' }, i)))) : null,
         el('a', { class: 'btn btn-primary', href: routeUrl(s), target: '_blank', rel: 'noopener' }, icon('nav'), T ? T.routeLabel : 'Googleマップで経路を見る'),
-        el('div', { class: 'sub' }, '情報は2025年11月発行の区のガイドより。開いていないこともあります。'));
+        el('div', { class: 'sub' }, [
+          inGuide ? '販売所の情報は2025年11月発行の区のガイドより。開いていないこともあります。' : '',
+          s.harvest ? '収穫体験は区の「練馬果樹あるファーム」「ねりまベジかるファーム」（2026年）より。開く日や時間は年によって変わるので、行く前に農園に確かめてください。' : ''].join('')));
     }
     function openList() {
       const from = st.me && inArea(st.me) ? st.me : adapter.center();
       const rows = stands.filter(visible).map(s => ({ s, d: distM(from, s) })).sort((a, b) => a.d - b.d);
       showSheet('list',
-        head(`${rows.length} か所の販売所`, st.me && inArea(st.me) ? '今いる場所から近い順' : '地図の中心から近い順'),
+        head(`${rows.length} か所`, st.me && inArea(st.me) ? '今いる場所から近い順' : '地図の中心から近い順'),
         el('div', { class: 'list' }, rows.map(({ s, d }) =>
           el('button', { class: 'row', type: 'button', onclick: () => { pauseFollow(); adapter.flyTo(s); openDetail(s.no); } },
             el('span', { class: 'row-icon' }, T ? T.icon(s) : icon(s.kind)),
             el('span', { class: 'row-main' },
               el('div', { class: 'row-title' }, s.name),
-              el('div', { class: 'row-sub' }, `${s.address.replace('練馬区', '')}　${s.items.slice(0, 4).join('・')}`)),
+              el('div', { class: 'row-sub' }, `${s.address.replace('練馬区', '')}　${s.items.length ? s.items.slice(0, 4).join('・') : s.harvest.map(h => h.what).join('・')}`)),
             el('span', { class: 'row-dist' }, fmtDist(d))))));
     }
 
@@ -270,7 +288,7 @@ window.StandApp = (() => {
       if (!best || st.sheet) { card.hidden = true; return; }
       card.replaceChildren(
         el('span', { class: 'row-icon' }, T ? T.icon(best.s) : icon(best.s.kind)),
-        el('div', {}, el('div', { class: 'eyebrow' }, T ? T.nearEyebrow(best.s) : 'すぐ近くに販売所'), el('div', { class: 'title' }, best.s.name)),
+        el('div', {}, el('div', { class: 'eyebrow' }, T ? T.nearEyebrow(best.s) : best.s.cat === 'harvest' ? 'すぐ近くに収穫体験の農園' : 'すぐ近くに販売所'), el('div', { class: 'title' }, best.s.name)),
         el('span', { class: 'near-dist' }, fmtDist(best.d)));
       card.onclick = () => openDetail(best.s.no);
       card.hidden = false;
@@ -291,7 +309,7 @@ window.StandApp = (() => {
       try { localStorage.setItem(ABOUT_KEY, '1'); } catch (e) {}
       showSheet('about',
         head(document.title, 'このマップについて'),
-        el('p', { class: 'note' }, '大泉学園のまわり（大泉5町）にある、野菜や果物の販売所（無人販売所や農家さんの直売所）をまとめた地図です。散歩のついでに、とれたての野菜に出会うきっかけになればうれしいです。'),
+        el('p', { class: 'note' }, '大泉学園のまわり（大泉5町）にある、野菜や果物の販売所（無人販売所や農家さんの直売所）と、収穫体験ができる農園をまとめた地図です。散歩のついでに、とれたての野菜に出会うきっかけになればうれしいです。'),
         el('div', { class: 'stack', style: 'gap:4px' },
           el('div', { class: 'sub' }, 'ご利用の前に'),
           el('ul', { class: 'about-list' },

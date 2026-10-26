@@ -16,11 +16,14 @@ window.Theme = (() => {
   // カイロソフト風のドット絵の色（2026-10-26〜。ほかのドット絵もあとでこちらにそろえる）
   const PAL_KAIRO = {
     K: '#4A2E2A', w: '#FFFFFF', W: '#FFFFFF', R: '#F0483A', r: '#FF9C8A', q: '#C02A2A', O: '#FF9A2E', Y: '#FFD43A', G: '#5CC84A', g: '#2E8A3A',
-    L: '#A8E06A', l: '#D8F5A8', t: '#78B840', P: '#8A4AC8', N: '#D08A4A', n: '#F0B878', D: '#9A5A30'
+    L: '#A8E06A', l: '#D8F5A8', t: '#78B840', P: '#8A4AC8', N: '#D08A4A', n: '#F0B878', D: '#9A5A30',
+    o: '#FFD08A', u: '#D06A10', E: '#7A4A28', e: '#A86A3A'
   };
-  // 広く見たときのピンの球: 木箱のピンのトマトと同じ赤に、ハイライトと影（だいき指示 2026-10-26。落ち着いた赤も試したが戻した）
-  const PAL_BALL = { w: '#FFFFFF', K: '#4A2E2A', R: '#F0483A', r: '#FF9C8A', h: '#FFFFFF', s: '#C02A2A' };
-  const SPRITE_PAL = { crate: PAL_KAIRO, ball: PAL_BALL };
+  // 広く見たときのピンの球: ハイライトと影つき。色で種類を分ける（2026-10-26 だいき指示）
+  //   販売所 = 木箱のトマトと同じ赤、収穫体験だけ = 青、販売所で収穫体験もできる = 紫
+  const ball = (R, r, s) => ({ w: '#FFFFFF', K: '#4A2E2A', R, r, h: '#FFFFFF', s });
+  const BALL = { sale: ball('#F0483A', '#FF9C8A', '#C02A2A'), harvest: ball('#3A7BE0', '#9CC4FF', '#2350A8'), both: ball('#9A5AD8', '#C9A6F2', '#6A34A0') };
+  const SPRITE_PAL = { crate: PAL_KAIRO, field: PAL_KAIRO, ball: BALL.sale };
   const SPRITES = {
     // 販売所: 木箱に果物と野菜の盛り合わせ（2026-10-26 だいき選択。カイロソフト風、まわりに白いふち）。色は PAL_KAIRO
     crate: [
@@ -29,6 +32,9 @@ window.Theme = (() => {
       '.wKLLLGLKRRRRRRqKKOOOKww', '.wKLLGLGLKRRRRqKKOOOOOKw', '.wwKLLLLtKRRRqqKKOOOOOKw', 'wwwKKLLtKKKKKKKwwKOOOKww', 'wKKKKKKKKKKKKKKKKKKKKKKw',
       'wKnnnnnnnnnnnnnnnnnnnnKw', 'wKNNNNNDNNNNDNNNNDNNNNKw', 'wKDDDDDDDDDDDDDDDDDDDDKw', 'wKNNNNNDNNNNDNNNNDNNNNKw', 'wKKKKKKKKKKKKKKKKKKKKKKw',
       'wwwwwwwwwwwwwwwwwwwwwwww'],
+    // 収穫体験の農園: 畑から野菜（キャベツ・にんじん・トマト）が生えている（2026-10-26）。色は PAL_KAIRO
+    field: [
+      '.........wwwwwww........', '........wwKwKwKwwwwww...', '........wKGKLKGKwwKKww..', '........wKGKGKGKwKGGKw..', '...wwwwwwwKGGGK.KGGGKww.', '..wwKKKwwwwKGK..KGGKRKw.', '.wwKlLLKwwwKgK.KGGKRRKw.', '.wKlLLLLKwKOOOKKKKGKKKw.', '.wKLLLLLKKOoOOuKKRKGGKw.', '.wKLLGLLKKOOOOuKRRKGKww.', '.wKLGLGtKKKOOuKKKKKGKw..', '.wwKLLtKeeeeeeeeKGGKKww.', 'wwKeKKKeeeeeeeeeeKKeeKww', 'wKEeEeEeEeEeEeEeEeEeEEKw', 'wKeeeeeeeeeeeeeeeeeeEEKw', 'wKeeeeeeeeeeeeeeeeeEEEKw', 'wwKeEeEeEeEeEeEeEeEEEKww', '.wwKKKeeeeeeeeeeeEKKKww.', '..wwwwKKKKKKKKKKKKwwww..', '.....wwwwwwwwwwwwww.....'],
     ball: ['..wwwwwww..', '.wwKKKKKww.', 'wwKrrrrRKww', 'wKrhrrRRRKw', 'wKrrrRRRRKw', 'wKrrRRRRsKw', 'wKrRRRRssKw', 'wKRRRRsssKw', 'wwKRRsssKww', '.wwKKKKKww.', '..wwwwwww..'],
     hero1: [
       '...HHHHHH...', '..HHHHHHHH..', 'HHHHHHHHHHHH', '..KSSSSSSK..', '..SSKSSKSS..', '..SSSSSSSS..', '...SSSSSS...',
@@ -37,8 +43,8 @@ window.Theme = (() => {
       '...HHHHHH...', '..HHHHHHHH..', 'HHHHHHHHHHHH', '..KSSSSSSK..', '..SSKSSKSS..', '..SSSSSSSS..', '...SSSSSS...',
       '..VVVVVVVV..', '.SVVWVVWVVS.', '.SVVVVVVVVS.', '..VVVVVVVV..', '..BBB...BB..', '..KK....KKK.']
   };
-  function sprite(key, scale = 2) {
-    const rows = SPRITES[key], pal = SPRITE_PAL[key] || PAL, w = rows[0].length, h = rows.length;
+  function sprite(key, scale = 2, pal = SPRITE_PAL[key] || PAL) {
+    const rows = SPRITES[key], w = rows[0].length, h = rows.length;
     let rects = '';
     rows.forEach((r, y) => {
       // 同じ色が続く横一列は1つの四角にまとめる
@@ -58,13 +64,19 @@ window.Theme = (() => {
   return {
     name,
     // ピン: 拡大しているときはドット絵、広く見ているとき（html.far）は色違いの丸（themes.css で切り替え）
-    pin: () => {
+    // 種類（s.cat）: sale = 販売所、harvest = 収穫体験だけ、both = 販売所で収穫体験もできる
+    // 拡大: 販売する所は木箱、収穫体験だけの所は畑の絵。収穫体験ができる所は右上に色の小さな球
+    pin: (s) => {
       const w = document.createElement('span');
       w.className = 'pin-art';
-      w.innerHTML = sprite('crate', 1.5) + `<span class="pin-dot">${sprite('ball', 1.5)}</span>`;
+      w.innerHTML = sprite(s.cat === 'harvest' ? 'field' : 'crate', 1.5)
+        + (s.cat === 'sale' ? '' : `<span class="pin-badge">${sprite('ball', 1, BALL[s.cat])}</span>`)
+        + `<span class="pin-dot">${sprite('ball', 1.5, BALL[s.cat])}</span>`;
       return w;
     },
-    icon: () => html(sprite('crate', 1.25)),
+    icon: (s) => html(sprite(s.cat === 'harvest' ? 'field' : 'crate', 1.25)),
+    // 色の見方（広く見ているとき）に使う球
+    ball: (cat) => sprite('ball', 1, BALL[cat]),
     me: () => {
       const d = document.createElement('div');
       d.className = 'me me-px';

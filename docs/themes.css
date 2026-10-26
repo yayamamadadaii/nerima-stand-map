@@ -18,6 +18,18 @@ html.retro .pin-dot { display: none; }
 html.retro.far .pin-art > .px { display: none; }
 html.retro.far .pin-dot { display: block; }
 html.retro.far .pin.near::after { display: none; }
+/* 収穫体験ができる所の印（拡大したとき、絵の右上の小さな球） */
+html.retro .pin-art { position: relative; }
+html.retro .pin-badge { position: absolute; right: -4px; top: -6px; }
+html.retro.far .pin-badge { display: none; }
+/* 色の見方（広く見ているときだけ）: 販売所 = 赤、収穫体験 = 青、販売所＋収穫体験 = 紫（だいき指示 2026-10-26） */
+.legend { display: none; }
+html.retro.far .legend {
+  display: flex; flex-wrap: wrap; gap: 4px 12px; position: absolute; z-index: 440; bottom: calc(60px + env(safe-area-inset-bottom, 0px));   /* 出典（2行）の上 */ left: max(8px, env(safe-area-inset-left, 0px));
+  max-width: calc(100% - 80px); box-sizing: border-box;
+  background: #FFFDF5; border: 2px solid var(--line); padding: 4px 8px; font-size: var(--fs-small); font-weight: 600;
+}
+html.retro.far .legend span { display: flex; align-items: center; gap: 4px; }
 /* 詳細の種類ラベル: 無人 = 深い緑（キーカラー）、お店の人がいる = 茶色。どちらも白い文字とのコントラスト4.5以上 */
 html.t-fami .tag { background: #2E6B34; color: #FFFDF5; }
 html.t-fami .tag.tag-plain { background: #F4EEDC; color: #4A4038; }
@@ -95,6 +107,7 @@ html.t-fami .lbl-chome { color: #1A1A1A; font-weight: 600; }
 html.t-fami .lbl-blk { color: #6B5A4A; }
 html.t-fami .row { border-bottom-color: #E2D6BC; }
 html.t-fami .tag.tag-manned { background: #8A4F1E; color: #FFFDF5; }
+html.t-fami .tag.tag-harvest { background: #2350A8; color: #FFFDF5; }   /* 収穫体験 = 青い球の影の色（白い文字とのコントラスト4.5以上） */
 /* 情報レイヤーのスイッチ: オフは色を付けない（オフが分かりにくい。だいき指摘 2026-10-26） */
 html.t-fami .toggle input { background: #D8CFBC; }
 html.t-fami .toggle input:checked { background: var(--accent); }
