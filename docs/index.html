@@ -6,10 +6,8 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#F3EBDD">
 <title>道のマルシェMAP 大泉学園版</title>
-<!-- タイトルだけポップな書体（だいき選択 2026-10-26）。使う文字だけ読み込む。タイトルを変えたら text= も直す -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@800&text=%E9%81%93%E3%81%AE%E3%83%9E%E3%83%AB%E3%82%B7%E3%82%A7MAP%E5%A4%A7%E6%B3%89%E5%AD%A6%E5%9C%92%E7%89%88&display=swap">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script>window.APP_V = "202610261605";</script>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<script>window.APP_V = "202610261610";</script>
 <script>
   // GitHub Pages はページを最大10分スマホに残すので、新しい版が出ていたら1回だけ読み直す
   fetch((window.APP_BASE || '') + 'version.txt?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.text() : '').then(v => {
@@ -19,14 +17,17 @@
     location.reload();
   }).catch(() => {});
 </script>
-<link rel="stylesheet" href="style.css?v=202610261605">
+<!-- タイトルだけポップな書体（だいき選択 2026-10-26）。使う文字だけ読み込む。タイトルを変えたら text= も直す -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@800&text=%E9%81%93%E3%81%AE%E3%83%9E%E3%83%AB%E3%82%B7%E3%82%A7MAP%E5%A4%A7%E6%B3%89%E5%AD%A6%E5%9C%92%E7%89%88&display=swap">
+<link rel="stylesheet" href="style.css?v=202610261610">
 <script>
   // 普段はファミコン本体風。simple/ のページか ?theme=simple のときだけシンプルな見た目
   if ((window.APP_THEME || new URLSearchParams(location.search).get('theme') || 'fami') === 'fami') document.documentElement.classList.add('retro', 't-fami');
 </script>
-<link rel="stylesheet" href="themes.css?v=202610261605">
+<link rel="stylesheet" href="themes.css?v=202610261610">
 <style>
-  .leaflet-container { font-family: var(--font); background: var(--map-land); }
+  /* 地図は MapLibre GL（2026-10-26 に Leaflet から載せ替え。前の版はタグ v1-leaflet） */
+  .maplibregl-map { font-family: var(--font); }
   .lbl { transform: translate(-50%, -50%); }
 </style>
 </head>
@@ -53,132 +54,10 @@
   <section class="sheet" id="sheet" hidden aria-live="polite"></section>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="themes.js?v=202610261605"></script>
-<script src="common.js?v=202610261605"></script>
-<script src="roads.js?v=202610261605"></script>
-<script src="layers.js?v=202610261605"></script>
-<script>
-// Leaflet で真上から見た平らな地図を描く。軽さ優先
-(() => {
-  const css = StandApp.css;
-  let map, styled = [], mask, borders = [], pinMarkers = new Map(), meMarker, area, stations = [], layers, roadsRestyle;
-
-  const adapter = {
-    async init({ D, towns, stands, pins, meEl, onMapClick, onUserMove }) {
-      const ring = towns.flatMap(t => t.rings[0]);
-      area = L.latLngBounds(
-        [Math.min(...ring.map(p => p[0])), Math.min(...ring.map(p => p[1]))],
-        [Math.max(...ring.map(p => p[0])), Math.max(...ring.map(p => p[1]))]);
-      // 指を離したあとも少し滑る（慣性）。ピンチの後に決まった倍率へ吸い付かない（zoomSnap: 0）
-      map = L.map('map', {
-        zoomControl: false, attributionControl: false, maxZoom: 19, zoomSnap: 0, zoomDelta: 0.5,
-        inertia: true, inertiaDeceleration: 1800, inertiaMaxSpeed: 3000, easeLinearity: 0.25,
-        bounceAtZoomLimits: false, maxBounds: area.pad(0.1), maxBoundsViscosity: 0.7
-      });
-      map.fitBounds(area, { padding: [8, 8] });
-      map.setMinZoom(map.getZoom());
-      map.on('click', onMapClick);
-      // 少し触れただけでは追いかけをやめない。40px 以上動かしたときだけ
-      let dragFrom;
-      map.on('dragstart', () => { dragFrom = map.getCenter(); });
-      map.on('drag', () => {
-        if (!dragFrom) return;
-        const moved = map.latLngToContainerPoint(dragFrom).distanceTo(map.getSize().divideBy(2));
-        if (moved > 40) { dragFrom = null; onUserMove(); }
-      });
-
-      map.createPane('land').style.zIndex = 240;
-      map.createPane('base').style.zIndex = 250;
-      map.createPane('mask').style.zIndex = 380;
-      map.createPane('labels').style.zIndex = 390;
-      // 面（畑・公園・水）と線（道・川・線路）は別のキャンバス。間に細い道（roads.js）が入る
-      const landCanvas = L.canvas({ pane: 'land', padding: 0.3 });
-      const canvas = L.canvas({ pane: 'base', padding: 0.3 });
-      const add = (list, fn, poly) => {
-        const o = { renderer: poly ? landCanvas : canvas, interactive: false, ...fn() };
-        styled.push([(poly ? L.polygon(list, o) : L.polyline(list, o)).addTo(map), fn]);
-      };
-      const zw = () => Math.max(0, map.getZoom() - 15);
-      const R = { lineCap: 'round', lineJoin: 'round' };
-      const major = D.major.concat(D.motorway);
-      const fill = (k) => css('--map-' + k);
-      add(D.farm.map(r => [r]), () => ({ stroke: false, fillColor: fill('farm'), fillOpacity: 1 }), true);
-      add(D.park.map(r => [r]), () => ({ stroke: false, fillColor: fill('park'), fillOpacity: 1 }), true);
-      add(D.water.map(r => [r]), () => ({ stroke: false, fillColor: fill('water'), fillOpacity: 1 }), true);
-      add(D.river, () => ({ color: css('--map-water'), weight: 2 + zw(), lineCap: 'round' }));
-      add(D.minor, () => ({ ...R, color: css('--map-road-casing'), weight: 3 + zw() * 2 }));
-      add(D.mid, () => ({ ...R, color: css('--map-road-casing'), weight: 5 + zw() * 2 }));
-      add(major, () => ({ ...R, color: css('--map-road-major-casing'), weight: 7 + zw() * 3 }));
-      add(D.minor, () => ({ ...R, color: css('--map-road'), weight: 1.5 + zw() * 2 }));
-      add(D.mid, () => ({ ...R, color: css('--map-road'), weight: 3.5 + zw() * 2 }));
-      add(major, () => ({ ...R, color: css('--map-road'), weight: 5 + zw() * 3 }));
-      add(D.rail, () => ({ color: css('--map-rail'), weight: 2 + zw() * 0.5 }));
-      add(D.rail, () => ({ color: css('--map-land'), weight: 1 + zw() * 0.5, dashArray: '6 6' }));
-      // 広く見ているときはピンが重なるので、ドット絵ではなく色違いの丸にする（themes.css）
-      const FAR_Z = 15;
-      const setFar = () => document.documentElement.classList.toggle('far', map.getZoom() < FAR_Z);
-      map.on('zoomend', () => { styled.forEach(([l, fn]) => l.setStyle(fn())); setFar(); });
-      setFar();
-
-      const world = [[35.6, 139.4], [35.6, 139.8], [35.9, 139.8], [35.9, 139.4]];
-      mask = L.polygon([world, ...towns.map(t => t.rings[0])], { pane: 'mask', interactive: false, stroke: false, fillOpacity: 0.72, fillRule: 'evenodd' }).addTo(map);
-      borders = towns.map(t => L.polygon(t.rings, { pane: 'mask', interactive: false, fill: false, weight: 1, dashArray: '4 4', opacity: 0.6 }).addTo(map));
-
-      const label = (p, text, cls) => {
-        const div = document.createElement('div');
-        div.className = 'lbl ' + cls; div.textContent = text;
-        L.marker(p, { pane: 'labels', interactive: false, keyboard: false, icon: L.divIcon({ className: '', html: div, iconSize: [0, 0] }) }).addTo(map);
-      };
-      D.stations.forEach(s => label(s.p, s.name + '駅', 'lbl-st'));
-      stations = D.stations.map(s => s.p);
-      towns.forEach(t => label(t.c, t.name, 'lbl-town'));
-
-      for (const s of stands) {
-        pinMarkers.set(s.no, L.marker([s.lat, s.lng], { icon: L.divIcon({ className: '', html: pins.get(s.no), iconSize: [32, 32], iconAnchor: [16, 16] }), keyboard: false }));
-      }
-      meMarker = L.marker([0, 0], { icon: L.divIcon({ className: '', html: meEl, iconSize: [0, 0] }), interactive: false, keyboard: false, zIndexOffset: 1000 });
-      this.restyle();
-    },
-    showPins(nos) {
-      const on = new Set(nos);
-      for (const [no, m] of pinMarkers) on.has(no) ? (map.hasLayer(m) || m.addTo(map)) : m.remove();
-      layers?.redraw();
-    },
-    setMe(p) { meMarker.setLatLng([p.lat, p.lng]); if (!map.hasLayer(meMarker)) meMarker.addTo(map); },
-    follow(p) {
-      if (map.getZoom() < 16.5) map.setView([p.lat, p.lng], 17, { animate: true });
-      else map.panTo([p.lat, p.lng], { animate: true, duration: 0.6, easeLinearity: 0.5 });
-    },
-    setHeading() {},
-    bearing() { return 0; },
-    center() { const c = map.getCenter(); return { lat: c.lat, lng: c.lng }; },
-    areaCenter() { const c = area.getCenter(); return { lat: c.lat, lng: c.lng }; },
-    flyTo(s) { map.setView([s.lat, s.lng], Math.max(map.getZoom(), 16.5)); },
-    restyle() {
-      styled.forEach(([l, fn]) => l.setStyle(fn()));
-      mask.setStyle({ fillColor: css('--map-land') });
-      borders.forEach(b => b.setStyle({ color: css('--map-border') }));
-      roadsRestyle?.();
-    }
-  };
-  // 文字が販売所のピンや駅名に重ならないよう、それらの場所を渡す
-  // 自分のキャラの上にも文字を置かない
-  const occupied = () => [...[...pinMarkers.values()].filter(m => map.hasLayer(m)).map(m => m.getLatLng()),
-    ...stations.map(p => ({ lat: p[0], lng: p[1] })), ...(meMarker && map.hasLayer(meMarker) ? [meMarker.getLatLng()] : [])];
-  // layers.js に渡す、Leaflet での文字の置き方
-  const view = {
-    zoom: () => map.getZoom(),
-    inView: (lat, lng) => map.getBounds().pad(0.1).contains([lat, lng]),
-    project: (lat, lng) => map.latLngToContainerPoint([lat, lng]),
-    addLabel: (el, lat, lng) => L.marker([lat, lng], { pane: 'labels', interactive: false, keyboard: false, icon: L.divIcon({ className: '', html: el, iconSize: [0, 0] }) }).addTo(map),
-    onMoveEnd: (fn) => map.on('moveend zoomend', fn)
-  };
-  StandApp.start(adapter).then(async () => {
-    layers = await MapLayers.attach(view, { occupied });
-    await SmallRoads.attach(map, { onRestyle: (fn) => { roadsRestyle = fn; } });
-  });
-})();
-</script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="themes.js?v=202610261610"></script>
+<script src="common.js?v=202610261610"></script>
+<script src="layers.js?v=202610261610"></script>
+<script src="map.js?v=202610261610"></script>
 </body>
 </html>

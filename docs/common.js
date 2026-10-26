@@ -1,5 +1,5 @@
 // A/B 共通: データ読み込み、画面（見出し・シート・一覧）、現在地、近づくと反応。
-// 地図ライブラリごとの違いは adapter に閉じ込める（a/index.html = Leaflet、b/index.html = MapLibre）。
+// 地図ライブラリごとの違いは adapter に閉じ込める（今は map.js = MapLibre GL）。
 window.StandApp = (() => {
   const NEAR_M = 60;          // この距離まで近づいたら「すぐ近く」を出す
   const $ = (id) => document.getElementById(id);

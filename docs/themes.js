@@ -8,8 +8,6 @@ window.Theme = (() => {
   // クラスと CSS・フォントは、表示のちらつきを防ぐため index.html の head で先に入れている
   document.documentElement.classList.add('retro', 't-' + name);
   document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', '#F3EBDD'));
-  // 地図の線を等倍で描いて拡大する（ドットが見える。描く量も減って軽くなる）
-  if (window.L) L.Browser.retina = false;
 
   const PAL = {
     K: '#3A2A1A', W: '#FFFDF5', R: '#E43B44', O: '#F7962F', Y: '#F8D040', G: '#4CAF3A', L: '#8FD45A', P: '#7A4FC8',

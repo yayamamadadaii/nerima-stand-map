@@ -2,52 +2,12 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<meta name="theme-color" content="#F3EBDD">
 <title>道のマルシェMAP 大泉学園版</title>
-<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-<script>window.APP_V = "202610261605"; window.APP_BASE = "../";</script>
-<!-- タイトルだけポップな書体（だいき選択 2026-10-26）。使う文字だけ読み込む。タイトルを変えたら text= も直す -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@800&text=%E9%81%93%E3%81%AE%E3%83%9E%E3%83%AB%E3%82%B7%E3%82%A7MAP%E5%A4%A7%E6%B3%89%E5%AD%A6%E5%9C%92%E7%89%88&display=swap">
-<link rel="stylesheet" href="../style.css?v=202610261605">
-<script>
-  // 普段はファミコン本体風。?theme=simple のときだけシンプルな見た目
-  if ((window.APP_THEME || new URLSearchParams(location.search).get('theme') || 'fami') === 'fami') document.documentElement.classList.add('retro', 't-fami');
-</script>
-<link rel="stylesheet" href="../themes.css?v=202610261605">
-<style>
-  .maplibregl-map { font-family: var(--font); }
-  .lbl { transform: translate(-50%, -50%); }
-</style>
+<!-- MapLibre 版の試作は 2026-10-26 に本体へ入れ替えた。前のブックマーク用に本体へ移る -->
+<script>location.replace('../' + location.search);</script>
+<noscript><meta http-equiv="refresh" content="0; url=../"></noscript>
 </head>
-<body>
-<div class="app">
-  <header class="top">
-    <div class="top-row">
-      <h1>道のマルシェMAP<small>大泉学園版</small></h1>
-      <button class="btn btn-secondary btn-small" id="listBtn" type="button">一覧</button>
-    </div>
-  </header>
-  <div class="map-wrap">
-    <div id="map" aria-label="大泉周辺の地図"></div>
-    <div class="banner" id="banner" hidden></div>
-    <div class="layer-panel" id="layerPanel" hidden></div>
-    <div class="controls">
-      <button class="btn btn-secondary btn-round" id="layerBtn" type="button" aria-expanded="false" aria-label="地図に出す情報"></button>
-      <button class="btn btn-secondary btn-round" id="compBtn" type="button" aria-pressed="false" aria-label="向きを表示"></button>
-      <button class="btn btn-secondary btn-round" id="locBtn" type="button" aria-pressed="false" aria-label="現在地"></button>
-    </div>
-    <div class="near-card" id="nearCard" hidden></div>
-    <div class="credit">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> ／ <a href="https://www.city.nerima.tokyo.jp/kankomoyoshi/nogyo/tokei/sasshi/hureai-guide.html" target="_blank" rel="noopener">練馬区ふれあいガイド</a></div>
-  </div>
-  <section class="sheet" id="sheet" hidden aria-live="polite"></section>
-</div>
-
-<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="../themes.js?v=202610261605"></script>
-<script src="../common.js?v=202610261605"></script>
-<script src="../layers.js?v=202610261605"></script>
-<script src="map.js?v=202610261605"></script>
-</body>
+<body><p><a href="../">道のマルシェMAP 大泉学園版</a>へ移りました。</p></body>
 </html>

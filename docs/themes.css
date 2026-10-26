@@ -5,7 +5,6 @@
 
 /* ---------- 共通 ---------- */
 html.retro { --radius-card: 6px; --radius-control: 4px; --radius-small: 2px; }
-html.retro .leaflet-pane canvas { image-rendering: pixelated; }
 html.retro .px { display: block; image-rendering: pixelated; }
 
 /* 販売所のピン = ドット絵そのもの */
