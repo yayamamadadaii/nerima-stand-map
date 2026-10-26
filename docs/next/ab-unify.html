@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ja" class="retro t-fami">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>呼び名・ピン・名前の見比べ</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="../themes.css">
+<style>
+  /* 見比べ用の仮ページ（ロードマップ 1-3・1-4）。決まったら消す */
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); font-size: var(--fs-body); line-height: var(--lh-body); }
+  main { max-width: 480px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 24px; }
+  h2.sec { font-size: var(--fs-h2); margin: 0; }
+  .lead { margin: 4px 0 0; color: var(--text-sub); font-size: var(--fs-small); }
+  .opt { background: var(--surface); border: 3px solid var(--line); border-radius: var(--radius-card); padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .opt h3 { margin: 0; font-size: var(--fs-h3); }
+  .opt h3 small { font-weight: 400; color: var(--text-sub); font-size: var(--fs-small); margin-left: 8px; }
+  /* 地図の地面の色の上にピンを並べる */
+  .ground { background: var(--map-land); border-radius: var(--radius-small); padding: 12px; display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+  .ground .who { font-size: var(--fs-caption); color: var(--text-sub); text-align: center; }
+  .ground figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .dots { display: flex; gap: 8px; align-items: center; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; box-sizing: border-box; border: 2px solid #FFFDF5; background: #3F8F3A; display: inline-block; }
+  .dot.red { background: #9E1B22; }
+  .mock-top { border-radius: var(--radius-small); overflow: hidden; }
+  .mock-top .top { position: static; }
+  .mock-top h1 small { display: block; font-size: var(--fs-small); letter-spacing: 0.02em; }
+  .detail { display: flex; flex-direction: column; gap: 8px; }
+  .detail .name { font-weight: 600; font-size: var(--fs-h3); }
+  .near { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+  .note-s { color: var(--text-sub); font-size: var(--fs-small); margin: 0; }
+</style>
+</head>
+<body>
+<main>
+  <div>
+    <h2 class="sec">1. ピンの絵</h2>
+    <p class="lead">無人と直売を分けずに出すときの絵。下の丸は、広く見ているときの表示。</p>
+  </div>
+  <div id="pins"></div>
+
+  <div>
+    <h2 class="sec">2. 呼び名と、詳細での見分け方</h2>
+    <p class="lead">全部を1つの呼び名にして、無人か有人かは詳細を開いたときのラベルで分かるようにする。</p>
+  </div>
+  <div id="words"></div>
+
+  <div>
+    <h2 class="sec">3. 名前と見出し</h2>
+    <p class="lead">スマホの幅（右に「一覧」ボタン）での見え方。</p>
+  </div>
+  <div id="titles"></div>
+</main>
+<script>
+  // themes.js と同じドット絵と色（見比べのために写した）
+  const PAL = { K: '#3A2A1A', W: '#FFFDF5', R: '#E43B44', O: '#F7962F', Y: '#F8D040', G: '#4CAF3A', L: '#8FD45A', B: '#6B3A1A', N: '#C98A4A', S: '#FCD8A8', U: '#2F6FD8', T: '#D9A55B' };
+  const SPRITES = {
+    basket: ['....G..L........', '...KRKKOK...KKKK', '..KRRRKOOK..KWWK', '..KRWRKOOOK.KWKK', '.KLLRRKOOOGKKWWK', '.KLLLLGGGGGK.KK.', 'KKKKKKKKKKKKK.K.',
+      'KTNTNTNTNTNTK.K.', 'KNTNTNTNTNTNK.K.', '.KTNTNTNTNTK..K.', '.KNTNTNTNTNK..K.', '..KKKKKKKKK..KKK'],
+    tent: ['...KKKKKKKKKK...', '..KRRWWRRWWRRK..', '.KRRWWRRWWRRWWK.', 'KRRWWRRWWRRWWRRK', 'KKKKKKKKKKKKKKKK', '.K....BBBB....K.', '.K...BSSSSB...K.', '.K...SKSSKS...K.',
+      '.K....SKKS....K.', '.KRR.UUUUUU.LL.K', 'KKKKKKKKKKKKKKKK', 'KNNNNNNNNNNNNNNK', 'KNNNNNNNNNNNNNNK', '.KN..........NK.', '.KK..........KK.'],
+    // 新しい案: 小さな屋根の付いた木の棚に野菜、下の段に料金箱（無人でも有人でもある形）
+    shelf: ['...KKKKKKKKKK...', '..KBBBBBBBBBBK..', '.KBBBBBBBBBBBBK.', 'KKKKKKKKKKKKKKKK', '.KT..........TK.', '.KT.G.R..O.L.TK.',
+      '.KTGGLRRROOLLTK.', '.KKKKKKKKKKKKKK.', '.KT..........TK.', '.KT.KKKK.Y.Y.TK.', '.KT.KWWK.YYYYTK.', '.KKKKKKKKKKKKKK.', '.KT..........TK.', '.KK..........KK.']
+  };
+  function sprite(key, scale = 2.25) {
+    const rows = SPRITES[key], w = rows[0].length, h = rows.length;
+    let r = '';
+    rows.forEach((row, y) => { for (let x = 0; x < w;) { const c = row[x]; let n = 1; while (x + n < w && row[x + n] === c) n++; if (c !== '.') r += `<rect x="${x}" y="${y}" width="${n}" height="1" fill="${PAL[c]}"/>`; x += n; } });
+    return `<svg width="${w * scale}" height="${h * scale}" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges">${r}</svg>`;
+  }
+  const fig = (key, who) => `<figure>${sprite(key)}<span class="who">${who}</span></figure>`;
+
+  document.getElementById('pins').innerHTML = [
+    ['A', '全部カゴ', '今の無人販売所の絵にそろえる。今の印象のまま', fig('basket', '無人') + fig('basket', '直売'), '<span class="dot"></span><span class="dot"></span><span class="dot"></span>'],
+    ['B', '新しい「棚」の絵', '屋根付きの木の棚に野菜と料金箱。無人・有人どちらにも見える形', fig('shelf', '無人') + fig('shelf', '直売'), '<span class="dot"></span><span class="dot"></span><span class="dot"></span>'],
+    ['C', '今の2種類のまま', '呼び名だけそろえ、絵はカゴとテントで分けたまま。ひと目で分かるが「分けない」とは少しずれる', fig('basket', '無人') + fig('tent', '直売'), '<span class="dot"></span><span class="dot red"></span><span class="dot"></span>']
+  ].map(([k, t, d, art, dots]) => `<section class="opt"><h3>${k}　${t}</h3><p class="note-s">${d}</p><div class="ground">${art}<div class="dots">${dots}</div></div></section>`).join('');
+
+  const tag = (txt, manned) => `<span class="tag${manned ? ' tag-manned' : ''}">${txt}</span>`;
+  document.getElementById('words').innerHTML = [
+    ['①', '販売所', '一番広い言い方。無人も直売もそのまま入る', '販売所', ['無人', 'お店の人がいる']],
+    ['②', '直売所', '農家さんが直接売る所、という意味が伝わる。無人の所も「直売」ではある', '直売所', ['無人', 'お店の人がいる']],
+    ['③', '野菜スタンド', 'やわらかい言い方。花や果物だけの所もあるのが少しずれる', '野菜スタンド', ['無人', 'お店の人がいる']]
+  ].map(([k, w, d, one, [u, m]]) => `<section class="opt"><h3>${k}　「${w}」</h3><p class="note-s">${d}</p>
+      <div class="detail"><div class="name">山口トマト農場</div><div class="meta-line">${tag(u)}<span class="sub">ここから 430 m</span></div>
+      <div class="meta-line">${tag(m, true)}<span class="sub">（有人のとき）</span></div>
+      <div class="near">${sprite('basket', 1.75)}ちかくに ${one}が あるよ！</div>
+      <p class="note-s">一覧の見出し: 「46 か所の${one}」</p></div></section>`).join('');
+
+  const head = (h1) => `<div class="mock-top"><header class="top"><div class="top-row"><h1>${h1}</h1><button class="btn btn-secondary btn-small" type="button">一覧</button></div></header></div>`;
+  document.getElementById('titles').innerHTML = [
+    ['ア', '道のマルシェMAP 大泉学園版（1行）', head('道のマルシェMAP 大泉学園版')],
+    ['イ', '道のマルシェMAP 大泉学園版（2行）', head('道のマルシェMAP<small>大泉学園版</small>')],
+    ['ウ', '大泉学園とれたてマップ（1行）', head('大泉学園とれたてマップ')],
+    ['エ', '大泉学園とれたてマップ（2行）', head('とれたてマップ<small>大泉学園</small>')]
+  ].map(([k, t, h]) => `<section class="opt"><h3>${k}　${t}</h3>${h}</section>`).join('') +
+  '<p class="note-s">「とれたて」は区の公式アプリ「とれたてねりま」と似ているので、公式と間違われないかも考えて選ぶ。</p>';
+</script>
+</body>
+</html>
