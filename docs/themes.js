@@ -65,12 +65,11 @@ window.Theme = (() => {
     name,
     // ピン: 拡大しているときはドット絵、広く見ているとき（html.far）は色違いの丸（themes.css で切り替え）
     // 種類（s.cat）: sale = 販売所、harvest = 収穫体験だけ、both = 販売所で収穫体験もできる
-    // 拡大: 販売する所は木箱、収穫体験だけの所は畑の絵。収穫体験ができる所は右上に色の小さな球
+    // 拡大: 販売する所は木箱、収穫体験だけの所は畑の絵（色の球は付けない。だいき指示 2026-10-26）
     pin: (s) => {
       const w = document.createElement('span');
       w.className = 'pin-art';
       w.innerHTML = sprite(s.cat === 'harvest' ? 'field' : 'crate', 1.5)
-        + (s.cat === 'sale' ? '' : `<span class="pin-badge">${sprite('ball', 1, BALL[s.cat])}</span>`)
         + `<span class="pin-dot">${sprite('ball', 1.5, BALL[s.cat])}</span>`;
       return w;
     },

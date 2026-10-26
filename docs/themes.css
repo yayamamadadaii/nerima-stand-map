@@ -18,10 +18,6 @@ html.retro .pin-dot { display: none; }
 html.retro.far .pin-art > .px { display: none; }
 html.retro.far .pin-dot { display: block; }
 html.retro.far .pin.near::after { display: none; }
-/* 収穫体験ができる所の印（拡大したとき、絵の右上の小さな球） */
-html.retro .pin-art { position: relative; }
-html.retro .pin-badge { position: absolute; right: -4px; top: -6px; }
-html.retro.far .pin-badge { display: none; }
 /* 色の見方（広く見ているときだけ）: 販売所 = 赤、収穫体験 = 青、販売所＋収穫体験 = 紫（だいき指示 2026-10-26） */
 .legend { display: none; }
 html.retro.far .legend {
