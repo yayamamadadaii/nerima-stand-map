@@ -107,3 +107,8 @@ html.t-fami .tag.tag-harvest { background: #2350A8; color: #FFFDF5; }   /* 収�
 /* 情報レイヤーのスイッチ: オフは色を付けない（オフが分かりにくい。だいき指摘 2026-10-26） */
 html.t-fami .toggle input { background: #D8CFBC; }
 html.t-fami .toggle input:checked { background: var(--accent); }
+
+/* [発見] のボタンとバーもファミコン風の枠に */
+html.t-fami .discover-bar { border: 3px solid var(--line); }
+html.t-fami .chip { border: 2px solid var(--line); }
+html.t-fami .discover-aim .pin-dot { display: none; }

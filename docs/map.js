@@ -163,6 +163,12 @@
       for (const s of stands) pinMarkers.set(s.no, new maplibregl.Marker({ element: box(pins.get(s.no), 36) }).setLngLat([s.lng, s.lat]));
       meMarker = new maplibregl.Marker({ element: box(meEl) });
     },
+    // 台帳が新しくなったとき: ピンを全部作り直す
+    setPins(stands, pins) {
+      for (const m of pinMarkers.values()) m.remove();
+      pinMarkers.clear();
+      for (const s of stands) pinMarkers.set(s.no, new maplibregl.Marker({ element: box(pins.get(s.no), 36) }).setLngLat([s.lng, s.lat]));
+    },
     showPins(nos) {
       const on = new Set(nos);
       for (const [no, m] of pinMarkers) {

@@ -225,3 +225,30 @@ h1 { margin: 0; font-size: var(--fs-h3); font-weight: 600; line-height: var(--lh
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* [発見]: 見つけた販売所を台帳に登録する（鍵がある端末だけ。2026-10-27） */
+.discover-btn {
+  position: absolute; z-index: 455; left: 50%; transform: translateX(-50%);
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px)); padding: 0 24px;
+}
+.discover-aim { position: absolute; z-index: 455; left: 50%; top: 50%; transform: translate(-50%, -100%); pointer-events: none; }
+.discover-aim .aim-dot { display: block; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 3px solid var(--surface); transform: translateY(50%); }
+.discover-bar {
+  position: absolute; z-index: 460; top: 8px;
+  left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-control);
+  padding: 8px 12px; display: flex; flex-direction: column; gap: 8px;
+}
+.discover-actions { display: flex; gap: 8px; }
+.discover-actions .btn { flex: 1; }
+.chip {
+  height: 32px; padding: 0 12px; border-radius: var(--radius-small); border: 1px solid var(--line);
+  background: var(--surface); color: var(--text); font: inherit; font-size: var(--fs-small); cursor: pointer;
+  transition: background var(--motion-fast);
+}
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.input {
+  height: 40px; box-sizing: border-box; width: 100%; padding: 0 12px; font: inherit;
+  background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: var(--radius-control);
+}
+.input:focus { outline: none; border-color: var(--accent); }

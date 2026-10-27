@@ -7,6 +7,25 @@ window.StandApp = (() => {
   // 「情報の修正・掲載の取り下げ」の連絡先（Googleフォーム。だいきが作る、2026-10-26 決定）。空のあいだはリンクを出さない
   const FORM_URL = '';        // 例: https://docs.google.com/forms/d/e/xxxx/viewform
   const FORM_ENTRY = '';      // 「対象の販売所・農園」欄の entry 番号（例: entry.123456）。あれば詳細から開いたときに名前を入れておく
+  // 台帳（Googleスプレッドシート + Apps Script。2026-10-27〜）。「表示」に ✓ がある行だけが返ってくる
+  const LEDGER_URL = 'https://script.google.com/macros/s/AKfycbzsscGOcvXEoDfv-dSt3CbnIboj226KaF5R_86K3gghaqlrJGb4NHzPeUEfWiG4FvRw/exec';
+  const LEDGER_CACHE = 'ledger-v1';      // 前に受け取った台帳。開いたときにすぐ出し、裏で新しい分を受け取って差し替える
+  const ADMIN_KEY = 'admin-key';         // [発見] で登録するための鍵。専用リンク（#key=...）を開くと、その端末に覚える
+  const SEASON = { 'ブルーベリー': '6月下旬〜9月', 'ミカン': '冬（日にちは農園に確認）', 'カキ': '10月中旬〜11月ごろ', '野菜': '日程は「とれたてねりま」で案内' };
+  const store = { get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
+  // 台帳の1行を、地図で使う形にする
+  const fromLedger = (r) => ({
+    no: r.id, name: r.name, address: r.address, lat: r.lat, lng: r.lng, note: r.note, source: r.source,
+    items: r.items ? r.items.split('・') : [], unmanned: r.kind === '無人', sale: r.kind !== '収穫体験だけ',
+    harvest: r.harvest ? r.harvest.split(';').map(w => ({ what: w.replace(/\*$/, ''), reserve: w.endsWith('*'), season: Object.entries(SEASON).find(([k]) => w.includes(k))?.[1] || '' })) : undefined
+  });
+  async function fetchLedger(timeout) {
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), timeout);
+    try {
+      const text = await (await fetch(LEDGER_URL, { signal: ctl.signal })).text();
+      return JSON.parse(text).ok ? text : null;
+    } catch (e) { return null; } finally { clearTimeout(t); }
+  }
   const formUrl = (s) => FORM_URL + (s && FORM_ENTRY ? `?usp=pp_url&${FORM_ENTRY}=${encodeURIComponent(s.name + '（' + s.address + '）')}` : '');
   const $ = (id) => document.getElementById(id);
   const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -71,11 +90,18 @@ window.StandApp = (() => {
   async function start(adapter) {
     const D = await (await fetch(`${window.APP_BASE || ''}data/mapdata.json?v=${window.APP_V || ''}`)).json();
     const towns = D.towns.filter(t => t.name !== '西大泉町');
+    // 専用リンク（#key=...）で開いたら、登録の鍵をこの端末に覚えて、アドレス欄からは消す
+    if (location.hash.startsWith('#key=')) { store.set(ADMIN_KEY, decodeURIComponent(location.hash.slice(5))); history.replaceState(null, '', location.pathname + location.search); }
+    // 販売所: 台帳（前に受け取った分）→ なければ台帳をその場で受け取る → それもだめなら地図データに入っている分
     // cat: sale = 販売所、harvest = 収穫体験だけ、both = 販売所で収穫体験もできる（2026-10-26）
-    const stands = D.stands
-      .filter(s => (s.sale !== false || SHOW.harvest) && (s.sale === false || s.unmanned || SHOW.manned))
+    const prepare = (list) => list
       .map(s => SHOW.harvest ? s : { ...s, harvest: undefined })
       .map(s => ({ ...s, kind: kind(s), cat: s.sale === false ? 'harvest' : s.harvest ? 'both' : 'sale' }));
+    const fallback = () => D.stands.filter(s => (s.sale !== false || SHOW.harvest) && (s.sale === false || s.unmanned || SHOW.manned));
+    let ledgerText = store.get(LEDGER_CACHE);
+    const usedCache = !!ledgerText;
+    if (!ledgerText) { ledgerText = await fetchLedger(4000); if (ledgerText) store.set(LEDGER_CACHE, ledgerText); }
+    let stands = prepare(ledgerText ? JSON.parse(ledgerText).stands.map(fromLedger) : fallback());
     const inArea = (p) => towns.some(t => pointInRing(p, t.rings[0]));
 
     const st = {
@@ -89,10 +115,21 @@ window.StandApp = (() => {
 
     // ピン
     const pins = new Map();
-    for (const s of stands) {
-      const p = el('div', { class: 'pin', role: 'button', 'aria-label': s.name }, T ? T.pin(s) : icon(s.kind));
-      p.addEventListener('click', (e) => { e.stopPropagation(); openDetail(s.no); });
-      pins.set(s.no, p);
+    function buildPins() {
+      pins.clear();
+      for (const s of stands) {
+        const p = el('div', { class: 'pin', role: 'button', 'aria-label': s.name }, T ? T.pin(s) : icon(s.kind));
+        p.addEventListener('click', (e) => { e.stopPropagation(); openDetail(s.no); });
+        pins.set(s.no, p);
+      }
+    }
+    buildPins();
+    // 台帳が新しくなったら、ピンを作り直す
+    function setStands(list) {
+      stands = prepare(list);
+      buildPins();
+      adapter.setPins(stands, pins);
+      renderPins(); checkNear();
     }
     function renderPins() {
       for (const s of stands) {
@@ -146,11 +183,12 @@ window.StandApp = (() => {
       if (!s) return;
       st.selected = no; renderPins();
       const d = st.me ? distM(st.me, s) : null;
-      const inGuide = s.sale !== false;   // 区のガイド（販売所）に載っている所
+      const inGuide = s.sale !== false && s.no < 1000;   // 区のガイド（販売所）に載っている所（番号はガイドの番号）
+      const own = s.source === '自分で登録';
       showSheet('detail',
         head(s.name, s.address),
         el('div', { class: 'meta-line' },
-          inGuide ? el('span', { class: s.unmanned ? 'tag' : 'tag tag-manned' }, s.unmanned ? '無人' : 'お店の人がいる') : null,
+          s.sale !== false ? el('span', { class: s.unmanned ? 'tag' : 'tag tag-manned' }, s.unmanned ? '無人' : 'お店の人がいる') : null,
           s.harvest ? el('span', { class: 'tag tag-harvest' }, '収穫体験') : null,
           d != null ? el('span', { class: 'near-dist' }, `ここから ${fmtDist(d)}`) : null,
           inGuide ? el('span', { class: 'sub' }, `区のガイド No.${s.no}`) : null),
@@ -163,7 +201,7 @@ window.StandApp = (() => {
           el('div', { class: 'tags' }, s.items.map(i => el('span', { class: 'tag tag-plain' }, i)))) : null,
         el('a', { class: 'btn btn-primary', href: routeUrl(s), target: '_blank', rel: 'noopener' }, icon('nav'), T ? T.routeLabel : 'Googleマップで経路を見る'),
         el('div', { class: 'sub' }, [
-          inGuide ? '販売所の情報は2025年11月発行の区のガイドより。開いていないこともあります。' : '',
+          inGuide ? '販売所の情報は2025年11月発行の区のガイドより。開いていないこともあります。' : own ? '歩いて見つけて登録した販売所です。開いていないこともあります。' : '',
           s.harvest ? '収穫体験は区の「練馬果樹あるファーム」「ねりまベジかるファーム」（2026年）より。開く日や時間は年によって変わるので、行く前に農園に確かめてください。' : ''].join('')),
         FORM_URL ? el('a', { class: 'sub', href: formUrl(s), target: '_blank', rel: 'noopener' }, '情報のちがい・掲載の取り下げを知らせる') : null);
     }
@@ -335,6 +373,69 @@ window.StandApp = (() => {
     if (credit) credit.prepend(el('a', { href: '#', onclick: (e) => { e.preventDefault(); openAbout(); } }, 'このマップについて'), ' ／ ');
 
     renderPins(); checkNear();
+    // 前に受け取った台帳で出したときは、裏で新しい分を受け取り、変わっていたら差し替える
+    if (usedCache) fetchLedger(15000).then(text => {
+      if (!text || text === store.get(LEDGER_CACHE)) return;
+      store.set(LEDGER_CACHE, text);
+      setStands(JSON.parse(text).stands.map(fromLedger));
+    });
+
+    // ---------- [発見]: 見つけた販売所を台帳に登録する（鍵がある端末だけ。2026-10-27） ----------
+    const adminKey = store.get(ADMIN_KEY);
+    if (adminKey) {
+      const wrap = document.querySelector('.map-wrap');
+      const btn = el('button', { class: 'btn btn-primary discover-btn', type: 'button' }, '発見');
+      const aim = el('div', { class: 'discover-aim', hidden: true, 'aria-hidden': 'true' }, T ? el('span', { class: 'aim-art' }) : el('span', { class: 'aim-dot' }));
+      if (T) aim.firstChild.innerHTML = T.pin({ cat: 'sale' }).innerHTML;
+      const bar = el('div', { class: 'discover-bar', hidden: true },
+        el('div', { class: 'sub' }, '地図を動かして、ピンを販売所の場所に合わせてください'),
+        el('div', { class: 'discover-actions' },
+          el('button', { class: 'btn btn-secondary', type: 'button', onclick: () => endPlace() }, 'やめる'),
+          el('button', { class: 'btn btn-primary', type: 'button', onclick: () => { const c = adapter.center(); endPlace(); openForm(c); } }, 'ここで決定')));
+      wrap.append(btn, aim, bar);
+      const endPlace = () => { aim.hidden = bar.hidden = true; btn.hidden = false; };
+      btn.onclick = () => {
+        closeSheet(); pauseFollow();
+        if (st.me) adapter.flyTo(st.me);
+        aim.hidden = bar.hidden = false; btn.hidden = true;
+      };
+      function openForm(pos) {
+        const pick = { kind: '無人', items: new Set() };
+        const seg = el('div', { class: 'seg' }, ['無人', 'お店の人がいる'].map(k => el('button', { type: 'button', 'aria-pressed': k === pick.kind, onclick: (e) => {
+          pick.kind = k; seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === e.currentTarget));
+        } }, k)));
+        const chips = el('div', { class: 'tags' }, ['野菜', '果物', '花・苗', '卵', 'その他'].map(k => el('button', { class: 'chip', type: 'button', 'aria-pressed': 'false', onclick: (e) => {
+          pick.items.has(k) ? pick.items.delete(k) : pick.items.add(k);
+          e.currentTarget.setAttribute('aria-pressed', pick.items.has(k));
+        } }, k)));
+        const name = el('input', { class: 'input', type: 'text', maxlength: '40', placeholder: '空なら「無人販売所（町名）」' });
+        const msg = el('div', { class: 'sub' });
+        const send = el('button', { class: 'btn btn-primary', type: 'button' }, '登録する');
+        send.onclick = async () => {
+          send.disabled = true; msg.textContent = '登録しています…';
+          try {
+            const res = await (await fetch(LEDGER_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify({ key: adminKey, lat: pos.lat, lng: pos.lng, kind: pick.kind, items: [...pick.items], name: name.value.trim() }) })).json();
+            if (!res.ok) throw new Error(res.error);
+            const s = { no: res.id, name: res.name, address: res.address, lat: pos.lat, lng: pos.lng, note: '', source: '自分で登録',
+              items: [...pick.items], unmanned: pick.kind === '無人', sale: true };
+            setStands([...stands, s]);
+            openDetail(s.no);
+            fetchLedger(15000).then(text => { if (text) store.set(LEDGER_CACHE, text); });
+          } catch (e) {
+            send.disabled = false;
+            msg.textContent = e.message === 'forbidden' ? '登録の鍵が合いません。専用リンクを開き直してください。' : '登録できませんでした。電波のよい所でもう一度試してください。';
+          }
+        };
+        showSheet('discover',
+          head('見つけた販売所を登録', 'ピンの場所で登録します'),
+          el('div', { class: 'stack', style: 'gap:4px' }, el('div', { class: 'sub' }, '種類'), seg),
+          el('div', { class: 'stack', style: 'gap:4px' }, el('div', { class: 'sub' }, '売っているもの（いくつでも。選ばなくてもよい）'), chips),
+          el('div', { class: 'stack', style: 'gap:4px' }, el('div', { class: 'sub' }, '名前（なくてもよい）'), name),
+          send, msg);
+      }
+    }
+
     let seen = false;
     try { seen = localStorage.getItem(ABOUT_KEY) === '1'; } catch (e) {}
     if (!seen) openAbout();
