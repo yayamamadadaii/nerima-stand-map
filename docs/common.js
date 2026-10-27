@@ -2,6 +2,8 @@
 // 地図ライブラリごとの違いは adapter に閉じ込める（今は map.js = MapLibre GL）。
 window.StandApp = (() => {
   const NEAR_M = 60;          // この距離まで近づいたら「すぐ近く」を出す
+  // 何を地図に出すか（2026-10-27 だいき: いったん無人販売所に絞る。データは消さずに残し、ここを true にすれば戻る）
+  const SHOW = { manned: false, harvest: false };   // manned = お店の人がいる直売所、harvest = 収穫体験の農園と情報
   // 「情報の修正・掲載の取り下げ」の連絡先（Googleフォーム。だいきが作る、2026-10-26 決定）。空のあいだはリンクを出さない
   const FORM_URL = '';        // 例: https://docs.google.com/forms/d/e/xxxx/viewform
   const FORM_ENTRY = '';      // 「対象の販売所・農園」欄の entry 番号（例: entry.123456）。あれば詳細から開いたときに名前を入れておく
@@ -70,7 +72,10 @@ window.StandApp = (() => {
     const D = await (await fetch(`${window.APP_BASE || ''}data/mapdata.json?v=${window.APP_V || ''}`)).json();
     const towns = D.towns.filter(t => t.name !== '西大泉町');
     // cat: sale = 販売所、harvest = 収穫体験だけ、both = 販売所で収穫体験もできる（2026-10-26）
-    const stands = D.stands.map(s => ({ ...s, kind: kind(s), cat: s.sale === false ? 'harvest' : s.harvest ? 'both' : 'sale' }));
+    const stands = D.stands
+      .filter(s => (s.sale !== false || SHOW.harvest) && (s.sale === false || s.unmanned || SHOW.manned))
+      .map(s => SHOW.harvest ? s : { ...s, harvest: undefined })
+      .map(s => ({ ...s, kind: kind(s), cat: s.sale === false ? 'harvest' : s.harvest ? 'both' : 'sale' }));
     const inArea = (p) => towns.some(t => pointInRing(p, t.rings[0]));
 
     const st = {
@@ -103,7 +108,7 @@ window.StandApp = (() => {
     const cone = meEl.querySelector('.me-cone');
 
     // 広く見ているときの色の見方（ファミコン風のときだけ。球の色はピンと同じ）
-    if (T) document.querySelector('.map-wrap')?.append(el('div', { class: 'legend', 'aria-hidden': 'true' },
+    if (T && SHOW.harvest) document.querySelector('.map-wrap')?.append(el('div', { class: 'legend', 'aria-hidden': 'true' },
       [['sale', '販売所'], ['harvest', '収穫体験'], ['both', '販売所＋収穫体験']].map(([c, t]) => {
         const sp = el('span');
         sp.innerHTML = T.ball(c);
@@ -314,7 +319,9 @@ window.StandApp = (() => {
       try { localStorage.setItem(ABOUT_KEY, '1'); } catch (e) {}
       showSheet('about',
         head(document.title, 'このマップについて'),
-        el('p', { class: 'note' }, '大泉学園のまわり（大泉5町）にある、野菜や果物の販売所（無人販売所や農家さんの直売所）と、収穫体験ができる農園をまとめた地図です。散歩のついでに、とれたての野菜に出会うきっかけになればうれしいです。'),
+        el('p', { class: 'note' }, (SHOW.manned || SHOW.harvest
+          ? '大泉学園のまわり（大泉5町）にある、野菜や果物の販売所（無人販売所や農家さんの直売所）' + (SHOW.harvest ? 'と、収穫体験ができる農園' : '') + 'をまとめた地図です。'
+          : '大泉学園のまわり（大泉5町）にある、野菜や果物の無人販売所をまとめた地図です。') + '散歩のついでに、とれたての野菜に出会うきっかけになればうれしいです。'),
         el('div', { class: 'stack', style: 'gap:4px' },
           el('div', { class: 'sub' }, 'ご利用の前に'),
           el('ul', { class: 'about-list' },
