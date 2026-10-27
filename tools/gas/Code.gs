@@ -34,12 +34,15 @@ function doPost(e) {
     const sheet = SpreadsheetApp.getActive().getSheetByName(SHEET);
     const ids = sheet.getRange(2, 1, Math.max(sheet.getLastRow() - 1, 1), 1).getValues().map(r => Number(r[0]) || 0);
     const id = Math.max(FIRST_NEW_ID - 1, ...ids) + 1;
+    // 「表示」のチェックボックスが下の空き行まで入っているので appendRow だと 1000 行目より下に行く。ID が空の最初の行に書く
+    let row = ids.findIndex(v => v === 0) + 2;
+    if (row < 2) row = sheet.getLastRow() + 1;
     const town = townName(lat, lng);
     const kind = ['無人', 'お店の人がいる'].includes(body.kind) ? body.kind : '無人';
     const items = Array.isArray(body.items) ? body.items.map(String).slice(0, 10).join('・') : '';
     const name = String(body.name || '').slice(0, 40) || `${kind === '無人' ? '無人販売所' : '直売所'}（${town.chome || '場所不明'}）`;
     const today = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
-    sheet.appendRow([id, true, name, town.address, lat, lng, kind, items, '', String(body.note || '').slice(0, 200), '確認済み', '自分で登録', today, '']);
+    sheet.getRange(row, 1, 1, 14).setValues([[id, true, name, town.address, lat, lng, kind, items, '', String(body.note || '').slice(0, 200), '確認済み', '自分で登録', today, '']]);
     return json({ ok: true, id, name, address: town.address });
   } finally {
     lock.releaseLock();
