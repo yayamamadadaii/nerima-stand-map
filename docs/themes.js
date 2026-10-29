@@ -24,7 +24,8 @@ window.Theme = (() => {
   const ball = (R, r, s) => ({ w: '#FFFFFF', K: '#4A2E2A', R, r, h: '#FFFFFF', s });
   const BALL = { sale: ball('#F0483A', '#FF9C8A', '#C02A2A'), harvest: ball('#3A7BE0', '#9CC4FF', '#2350A8'), both: ball('#9A5AD8', '#C9A6F2', '#6A34A0') };
   const AIM_PAL = { K: '#4A2E2A', w: '#FFFFFF', W: '#FFFFFF', R: '#F0483A', r: '#FF9C8A', q: '#C02A2A', h: '#FFFFFF', M: '#7A7A80', G: '#2E6B34' };
-  const CAT_PAL = { K: '#4A2E2A', w: '#FFFFFF', c: '#FFFFFF', C: '#DCDCE4', a: '#34303C', A: '#34303C', i: '#4A2E2A', k: '#F4A0A0' };
+  // 紺の猫に黄色い目（2026-10-29 だいき選択。ハチワレは地図で目立たなかった）
+  const CAT_PAL = { K: '#4A2E2A', w: '#FFFFFF', c: '#2A3A78', C: '#1C2858', a: '#2A3A78', A: '#1C2858', i: '#FFD43A', k: '#F4A0A0' };
   const SPRITE_PAL = { crate: PAL_KAIRO, field: PAL_KAIRO, ball: BALL.sale, aimA: AIM_PAL, aimB: AIM_PAL, aimRing: AIM_PAL, cat1: CAT_PAL, cat2: CAT_PAL };
   const AIM = 'A';                                   // 逆三角形（2026-10-29 だいき選択。虫ピンは B）
   const AIM_LIFT = 14;                               // ピンを場所の輪から少し浮かせる（px。輪と絵が重ならないように。だいき指示）
@@ -47,7 +48,7 @@ window.Theme = (() => {
       '..wKKKKKw..', '...wwKww...', '....wMw....', '....wMw....', '....wMw....', '....wMw....', '....wMw....', '....wKw....', '.....w.....'],
     aimRing: ['..www..', '.wGGGw.', 'wGw.wGw', 'wG...Gw', 'wGw.wGw', '.wGGGw.', '..www..'],
     ball: ['..wwwwwww..', '.wwKKKKKww.', 'wwKrrrrRKww', 'wKrhrrRRRKw', 'wKrrrRRRRKw', 'wKrrRRRRsKw', 'wKrRRRRssKw', 'wKRRRRsssKw', 'wwKRRsssKww', '.wwKKKKKww.', '..wwwwwww..'],
-    // 自分: ハチワレの猫（正面。2026-10-29 だいきが Gemini で作った絵に寄せ、色は6案から だいき選択。前は麦わら帽子の農家さん）
+    // 自分: 紺の猫（正面。2026-10-29 だいきが Gemini で作った絵に寄せた。ハチワレ → 紺に。前は麦わら帽子の農家さん）
     //   2コマ: cat2 は右の前足を上げ、しっぽを少し揺らす。i = 目、色は CAT_PAL
     cat1: [
       '....www.........www.......', '....wKww.......wwKw.......', '....wKKww.....wwKKw.......', '....wKkKwwwwwwwKkKw.......', '....wKakKKKKKKKkaKw.......',
