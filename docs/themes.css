@@ -41,7 +41,8 @@ html.retro .pin.near::after {
 @keyframes px-hop { 0% { transform: none; } 25% { transform: scale(1.1, 0.85); } 50% { transform: translateY(-8px); } 75% { transform: none; } }
 
 /* 自キャラ: 2コマでいつも足踏み。歩いているときは速く（だいき指摘 2026-10-22: ひとまわり大きく、止まっていても足踏み） */
-html.retro .me-px .hero { position: absolute; left: -20px; top: -38px; }
+/* 猫（2026-10-29〜）: 26×23ドットを1.5倍。足の先が自分の位置に来るように置く */
+html.retro .me-px .hero { position: absolute; left: -19px; top: -30px; }
 html.retro .me-px .hero .px:first-child { animation: px-a 0.9s steps(1) infinite; }
 html.retro .me-px .hero .px:last-child { position: absolute; top: 0; animation: px-b 0.9s steps(1) infinite; }
 html.retro .me-px.walking .hero .px { animation-duration: 0.45s; }

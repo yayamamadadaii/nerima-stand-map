@@ -24,7 +24,8 @@ window.Theme = (() => {
   const ball = (R, r, s) => ({ w: '#FFFFFF', K: '#4A2E2A', R, r, h: '#FFFFFF', s });
   const BALL = { sale: ball('#F0483A', '#FF9C8A', '#C02A2A'), harvest: ball('#3A7BE0', '#9CC4FF', '#2350A8'), both: ball('#9A5AD8', '#C9A6F2', '#6A34A0') };
   const AIM_PAL = { K: '#4A2E2A', w: '#FFFFFF', W: '#FFFFFF', R: '#F0483A', r: '#FF9C8A', q: '#C02A2A', h: '#FFFFFF', M: '#7A7A80', G: '#2E6B34' };
-  const SPRITE_PAL = { crate: PAL_KAIRO, field: PAL_KAIRO, ball: BALL.sale, aimA: AIM_PAL, aimB: AIM_PAL, aimRing: AIM_PAL };
+  const CAT_PAL = { K: '#4A2E2A', w: '#FFFFFF', c: '#FFFFFF', C: '#DCDCE4', a: '#34303C', A: '#34303C', i: '#4A2E2A', k: '#F4A0A0' };
+  const SPRITE_PAL = { crate: PAL_KAIRO, field: PAL_KAIRO, ball: BALL.sale, aimA: AIM_PAL, aimB: AIM_PAL, aimRing: AIM_PAL, cat1: CAT_PAL, cat2: CAT_PAL };
   const AIM = 'A';                                   // 逆三角形（2026-10-29 だいき選択。虫ピンは B）
   const AIM_LIFT = 14;                               // ピンを場所の輪から少し浮かせる（px。輪と絵が重ならないように。だいき指示）
   const AIM_TIP = { A: [7.5, 18.5], B: [5.5, 17.5] };   // 先の画素の真ん中（ドット単位）
@@ -46,12 +47,20 @@ window.Theme = (() => {
       '..wKKKKKw..', '...wwKww...', '....wMw....', '....wMw....', '....wMw....', '....wMw....', '....wMw....', '....wKw....', '.....w.....'],
     aimRing: ['..www..', '.wGGGw.', 'wGw.wGw', 'wG...Gw', 'wGw.wGw', '.wGGGw.', '..www..'],
     ball: ['..wwwwwww..', '.wwKKKKKww.', 'wwKrrrrRKww', 'wKrhrrRRRKw', 'wKrrrRRRRKw', 'wKrrRRRRsKw', 'wKrRRRRssKw', 'wKRRRRsssKw', 'wwKRRsssKww', '.wwKKKKKww.', '..wwwwwww..'],
-    hero1: [
-      '...HHHHHH...', '..HHHHHHHH..', 'HHHHHHHHHHHH', '..KSSSSSSK..', '..SSKSSKSS..', '..SSSSSSSS..', '...SSSSSS...',
-      '..VVVVVVVV..', '.SVVWVVWVVS.', '.SVVVVVVVVS.', '..VVVVVVVV..', '..BBB..BBB..', '..KKK..KKK..'],
-    hero2: [
-      '...HHHHHH...', '..HHHHHHHH..', 'HHHHHHHHHHHH', '..KSSSSSSK..', '..SSKSSKSS..', '..SSSSSSSS..', '...SSSSSS...',
-      '..VVVVVVVV..', '.SVVWVVWVVS.', '.SVVVVVVVVS.', '..VVVVVVVV..', '..BBB...BB..', '..KK....KKK.']
+    // 自分: ハチワレの猫（正面。2026-10-29 だいきが Gemini で作った絵に寄せ、色は6案から だいき選択。前は麦わら帽子の農家さん）
+    //   2コマ: cat2 は右の前足を上げ、しっぽを少し揺らす。i = 目、色は CAT_PAL
+    cat1: [
+      '....www.........www.......', '....wKww.......wwKw.......', '....wKKww.....wwKKw.......', '....wKkKwwwwwwwKkKw.......', '....wKakKKKKKKKkaKw.......',
+      '....wKaaaacccaaaaKwwwww...', '...wwKaaaacccaaaaKwKKKww..', '...wKaaacccccccaaaKKaaKw..', '...wKaaaiiccciiaaaaKaaKw..', '...wKccciiccciiccccKAAKw..',
+      '...wKccciiccciiccccKaaKw..', '...wKcccccckcccccccKaaKw..', '...wwKccccCcCcccccKKAAKw..', '....wwKccccccccccKKaaKww..', '.....wwKccccccccCKKaaKw...',
+      '.....wKCCCCCCCCCCCAAKww...', '.....wKcccccccccCCaKww....', '.....wKcccccccccCKKww.....', '.....wwKccccccccKwww......', '......wKccKccKccKw........',
+      '......wKcKwKKwKcKw........', '......wKKKwwwwKKKw........', '......wwwww..wwwww........'],
+    cat2: [
+      '....www.........www.......', '....wKww.......wwKw.......', '....wKKww.....wwKKw.......', '....wKkKwwwwwwwKkKw.......', '....wKakKKKKKKKkaKw.......',
+      '....wKaaaacccaaaaKwwwwww..', '...wwKaaaacccaaaaKwwKKKww.', '...wKaaacccccccaaaKwwKaKw.', '...wKaaaiiccciiaaaKwwKaKw.', '...wKccciiccciicccKwwKAKw.',
+      '...wKccciiccciicccKwwKaKw.', '...wKcccccckccccccKwKaKww.', '...wwKccccCcCccccKwwKAKw..', '....wwKcccccccccKwwKaKww..', '.....wwKccccccccKwwKaKw...',
+      '.....wKCCCCCCCCCCKKAKww...', '.....wKcccccccccCCaKww....', '.....wKcccccccccCKKww.....', '.....wwKccccccccKwww......', '......wKccKccKccKw........',
+      '......wKcKwKKwKKKw........', '......wKKKwwwwwwww........', '......wwwww...............']
   };
   function sprite(key, scale = 2, pal = SPRITE_PAL[key] || PAL) {
     const rows = SPRITES[key], w = rows[0].length, h = rows.length;
@@ -97,7 +106,7 @@ window.Theme = (() => {
     me: () => {
       const d = document.createElement('div');
       d.className = 'me me-px';
-      d.innerHTML = `<div class="me-cone" hidden></div><div class="hero">${sprite('hero1', 3.25)}${sprite('hero2', 3.25)}</div>`;
+      d.innerHTML = `<div class="me-cone" hidden></div><div class="hero">${sprite('cat1', 1.5)}${sprite('cat2', 1.5)}</div>`;
       return d;
     },
     nearEyebrow: copy.near,
