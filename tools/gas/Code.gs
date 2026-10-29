@@ -6,6 +6,7 @@
 const SHEET = '販売所';
 const COL = { id: 0, show: 1, name: 2, address: 3, lat: 4, lng: 5, kind: 6, items: 7, harvest: 8, note: 9, status: 10, source: 11, date: 12, memo: 13 };
 const FIRST_NEW_ID = 2001;   // 自分で登録した所の番号はここから
+const CAND_ID = 3001;        // 確かめに行く候補（ネリマンタイムスの記事など）の番号はここから
 const RANGE_M = 50;          // 登録できるのは自分の位置からこの距離まで（2026-10-29 だいき）
 const UNDO_MIN = 10;         // 登録してからこの分数までは取り消せる（2026-10-29 だいき）
 
@@ -34,6 +35,8 @@ function doPost(e) {
     const action = body.action || 'add';
     if (action === 'add') return json(addStand(sheet, body));
     if (action === 'cancel' || action === 'gone') return json(hideStand(sheet, Number(body.id), action));
+    if (action === 'candidates') return json(candidates(sheet));
+    if (action === 'confirm') return json(confirmStand(sheet, body));
     return json({ ok: false, error: 'bad action' });
   } finally {
     lock.releaseLock();
@@ -47,7 +50,7 @@ function addStand(sheet, body) {
   const me = body.me || {};
   if (!(distM(lat, lng, Number(me.lat), Number(me.lng)) <= RANGE_M + 20)) return { ok: false, error: 'too far' };
   const ids = sheet.getRange(2, 1, Math.max(sheet.getLastRow() - 1, 1), 1).getValues().map(r => Number(r[0]) || 0);
-  const id = Math.max(FIRST_NEW_ID - 1, ...ids) + 1;
+  const id = Math.max(FIRST_NEW_ID - 1, ...ids.filter(v => v < CAND_ID)) + 1;   // 3001〜 は確かめに行く候補の番号なので数えない
   // 「表示」のチェックボックスが下の空き行まで入っているので appendRow だと 1000 行目より下に行く。ID が空の最初の行に書く
   let row = ids.findIndex(v => v === 0) + 2;
   if (row < 2) row = sheet.getLastRow() + 1;
@@ -78,6 +81,35 @@ function hideStand(sheet, id, action) {
   }
   sheet.getRange(row, COL.show + 1).setValue(false);
   return { ok: true, id };
+}
+
+// 確かめに行く候補（状態が「未確認」で、地図に出していない行）。鍵のある端末だけが受け取る（2026-10-29）
+function candidates(sheet) {
+  const rows = sheet.getDataRange().getValues().slice(1);
+  const list = rows.filter(r => r[COL.status] === '未確認' && r[COL.show] !== true && r[COL.lat] !== '').map(r => ({
+    id: Number(r[COL.id]), name: String(r[COL.name]), address: String(r[COL.address]), lat: Number(r[COL.lat]), lng: Number(r[COL.lng]),
+    kind: String(r[COL.kind]), items: String(r[COL.items]), source: String(r[COL.source]), memo: String(r[COL.memo])
+  }));
+  return { ok: true, candidates: list };
+}
+
+// 候補に行ってみて「あった」: 今いる場所で位置を確定し、地図に出す。種類・品目・名前は [発見] と同じように選び直せる
+function confirmStand(sheet, body) {
+  const id = Number(body.id), lat = Number(body.lat), lng = Number(body.lng);
+  if (!(lat > 35.6 && lat < 35.9 && lng > 139.4 && lng < 139.8)) return { ok: false, error: 'bad position' };
+  const me = body.me || {};
+  if (!(distM(lat, lng, Number(me.lat), Number(me.lng)) <= RANGE_M + 20)) return { ok: false, error: 'too far' };
+  const rows = sheet.getRange(2, 1, Math.max(sheet.getLastRow() - 1, 1), 14).getValues();
+  const i = rows.findIndex(r => Number(r[COL.id]) === id);
+  if (i < 0) return { ok: false, error: 'not found' };
+  const r = rows[i], row = i + 2, town = townName(lat, lng);
+  const kind = ['無人', 'お店の人がいる'].includes(body.kind) ? body.kind : '無人';
+  const items = Array.isArray(body.items) ? body.items.map(String).slice(0, 10).join('・') : String(r[COL.items]);
+  const name = String(body.name || '').slice(0, 40) || `${kind === '無人' ? '無人販売所' : '直売所'}（${town.chome || '場所不明'}）`;
+  const today = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
+  sheet.getRange(row, 1, 1, 14).setValues([[id, true, name, town.address || r[COL.address], lat, lng, kind, items, r[COL.harvest], r[COL.note], '確認済み',
+    `${r[COL.source]} → 歩いて確認`, r[COL.date], [r[COL.memo], `${today} 行ってみたらあった（位置を現地で直した）`].filter(String).join(' / ')]]);
+  return { ok: true, id, name, address: town.address };
 }
 
 function distM(lat1, lng1, lat2, lng2) {

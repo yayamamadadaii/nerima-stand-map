@@ -108,6 +108,7 @@ window.StandApp = (() => {
     const usedCache = !!ledgerText;
     if (!ledgerText) { ledgerText = await fetchLedger(4000); if (ledgerText) store.set(LEDGER_CACHE, ledgerText); }
     let stands = prepare(ledgerText ? JSON.parse(ledgerText).stands.map(fromLedger) : fallback());
+    let cands = [];      // 確かめに行く候補（鍵がある端末だけ。台帳の「未確認」で地図に出していない所。2026-10-29）
     const inArea = (p) => towns.some(t => pointInRing(p, t.rings[0]));
 
     const st = {
@@ -125,7 +126,7 @@ window.StandApp = (() => {
     function buildPins() {
       pins.clear();
       for (const s of stands) {
-        const p = el('div', { class: 'pin', role: 'button', 'aria-label': s.name }, T ? T.pin(s) : icon(s.kind));
+        const p = el('div', { class: s.cand ? 'pin cand' : 'pin', role: 'button', 'aria-label': s.name }, T ? T.pin(s) : icon(s.kind));
         p.addEventListener('click', (e) => { e.stopPropagation(); openDetail(s.no); });
         pins.set(s.no, p);
       }
@@ -133,7 +134,7 @@ window.StandApp = (() => {
     buildPins();
     // 台帳が新しくなったら、ピンを作り直す
     function setStands(list) {
-      stands = prepare(list);
+      stands = prepare(list.filter(x => !x.cand)).concat(cands);
       buildPins();
       adapter.setPins(stands, pins);
       renderPins(); checkNear();
@@ -189,9 +190,10 @@ window.StandApp = (() => {
       const s = stands.find(x => x.no === no);
       if (!s) return;
       st.selected = no; renderPins();
+      if (s.cand) return openCandidate(s);
       const d = st.me ? distM(st.me, s) : null;
       const inGuide = s.sale !== false && s.no < 1000;   // 区のガイド（販売所）に載っている所（番号はガイドの番号）
-      const own = s.source === '自分で登録';
+      const own = s.source === '自分で登録' || /歩いて確認/.test(s.source || '');
       showSheet('detail',
         head(s.name, s.address),
         el('div', { class: 'meta-line' },
@@ -217,13 +219,13 @@ window.StandApp = (() => {
       const from = st.me && inArea(st.me) ? st.me : adapter.center();
       const rows = stands.filter(visible).map(s => ({ s, d: distM(from, s) })).sort((a, b) => a.d - b.d);
       showSheet('list',
-        head(`${rows.length} か所`, st.me && inArea(st.me) ? '今いる場所から近い順' : '地図の中心から近い順'),
+        head(`${rows.length - cands.length} か所${cands.length ? `（ほかに確かめに行く候補 ${cands.length}）` : ''}`, st.me && inArea(st.me) ? '今いる場所から近い順' : '地図の中心から近い順'),
         el('div', { class: 'list' }, rows.map(({ s, d }) =>
           el('button', { class: 'row', type: 'button', onclick: () => { pauseFollow(); adapter.flyTo(s); openDetail(s.no); } },
             el('span', { class: 'row-icon' }, T ? T.icon(s) : icon(s.kind)),
             el('span', { class: 'row-main' },
               el('div', { class: 'row-title' }, s.name),
-              el('div', { class: 'row-sub' }, `${s.address.replace('練馬区', '')}　${s.items.length ? s.items.slice(0, 4).join('・') : s.harvest.map(h => h.what).join('・')}`)),
+              el('div', { class: 'row-sub' }, `${s.address.replace('練馬区', '')}　${s.cand ? '未確認の候補' : s.items.length ? s.items.slice(0, 4).join('・') : s.harvest ? s.harvest.map(h => h.what).join('・') : ''}`)),
             el('span', { class: 'row-dist' }, fmtDist(d))))));
     }
 
@@ -346,7 +348,7 @@ window.StandApp = (() => {
       if (!best || st.sheet) { card.hidden = true; return; }
       card.replaceChildren(
         el('span', { class: 'row-icon' }, T ? T.icon(best.s) : icon(best.s.kind)),
-        el('div', {}, el('div', { class: 'eyebrow' }, T ? T.nearEyebrow(best.s) : best.s.cat === 'harvest' ? 'すぐ近くに収穫体験の農園' : 'すぐ近くに販売所'), el('div', { class: 'title' }, best.s.name)),
+        el('div', {}, el('div', { class: 'eyebrow' }, best.s.cand ? '確かめに行く候補' : T ? T.nearEyebrow(best.s) : best.s.cat === 'harvest' ? 'すぐ近くに収穫体験の農園' : 'すぐ近くに販売所'), el('div', { class: 'title' }, best.s.name)),
         el('span', { class: 'near-dist' }, fmtDist(best.d)));
       card.onclick = () => openDetail(best.s.no);
       card.hidden = false;
@@ -435,6 +437,33 @@ window.StandApp = (() => {
         msg);
     }
 
+    // 確かめに行く候補の詳細: 記事の情報と、「あった」（場所を合わせて確定）・「なかった」
+    let startPlace = () => {};
+    function openCandidate(s) {
+      const d = st.me ? distM(st.me, s) : null;
+      const memo = s.memo || '';
+      const urls = memo.match(/https:\/\/\S+/g) || [];
+      const items = (memo.split('記事の品目: ')[1] || '').trim();
+      const msg = el('div', { class: 'sub' });
+      const found = el('button', { class: 'btn btn-primary', type: 'button', onclick: () => startPlace(s) }, 'あった（場所を合わせて確定）');
+      const none = el('button', { class: 'btn btn-secondary', type: 'button' }, 'なかった');
+      let armed = false;
+      none.onclick = async () => {
+        if (!armed) { armed = true; none.textContent = 'もう一度押すと候補から外します'; return; }
+        none.disabled = true; msg.textContent = '送っています…';
+        try { await post({ action: 'gone', id: s.no }); cands = cands.filter(x => x.no !== s.no); setStands(stands); closeSheet(); }
+        catch (e) { none.disabled = false; armed = false; none.textContent = 'なかった'; msg.textContent = errText(e); }
+      };
+      showSheet('detail',
+        head(s.name, s.address),
+        el('div', { class: 'meta-line' }, el('span', { class: 'tag tag-plain' }, '未確認の候補'), d != null ? el('span', { class: 'near-dist' }, `ここから ${fmtDist(d)}`) : null),
+        el('p', { class: 'note' }, `地域ブログ「ネリマンタイムス」の記事（${s.source.replace('ネリマンタイムス ', '')}）に出ていた無人販売所です。今もあるかは分かりません。位置は記事の地図からなので、数十m ずれていることがあります。`),
+        items ? el('div', { class: 'stack', style: 'gap:4px' }, el('div', { class: 'sub' }, '記事に書かれていた品目'), el('div', { class: 'note' }, items)) : null,
+        urls.length ? el('div', { class: 'sub' }, '記事: ', ...urls.map((u, i) => [i ? '、' : '', el('a', { href: u, target: '_blank', rel: 'noopener' }, u.split('/').pop())])) : null,
+        el('a', { class: 'btn btn-secondary', href: routeUrl(s), target: '_blank', rel: 'noopener' }, icon('nav'), T ? T.routeLabel : 'Googleマップで経路を見る'),
+        el('div', { class: 'stack admin-tools', style: 'gap:8px' }, el('div', { class: 'sub' }, '行ってみたら'), found, none, msg));
+    }
+
     if (adminKey) {
       const wrap = document.querySelector('.map-wrap');
       // 右下のボタンの列のいちばん上に置く
@@ -444,8 +473,11 @@ window.StandApp = (() => {
       const aim = el('div', { class: 'discover-aim', hidden: true, 'aria-hidden': 'true' }, T ? T.aim() : el('span', { class: 'aim-dot' }));
       const status = el('div', { class: 'sub discover-status' });
       const decide = el('button', { class: 'btn btn-primary', type: 'button' }, 'ここで決定');
+      const GUIDE = '地図にない販売所を登録できます。地図を動かして、ピンの先を販売所に合わせてください。';
+      const guide = el('div', {}, GUIDE);
+      let target = null;   // 候補を確定するときは、その候補
       const bar = el('div', { class: 'discover-bar', hidden: true },
-        el('div', {}, '地図にない販売所を登録できます。地図を動かして、ピンの先を販売所に合わせてください。'),
+        guide,
         status,
         el('div', { class: 'discover-actions' },
           el('button', { class: 'btn btn-secondary', type: 'button', onclick: () => endPlace() }, 'やめる'),
@@ -464,19 +496,27 @@ window.StandApp = (() => {
       adapter.onMove(updatePlace);
       onMe = updatePlace;
       const endPlace = () => { st.placing = false; adapter.setRange(null); aim.hidden = bar.hidden = true; btn.hidden = false; };
-      btn.onclick = () => {
+      startPlace = (cand) => {
+        target = cand || null;
+        guide.textContent = target ? `「${target.name}」を確定します。地図を動かして、ピンの先を販売所に合わせてください。` : GUIDE;
         closeSheet(); pauseFollow();
         if (!st.watching) startWatch();
         if (st.me) adapter.flyTo(st.me);
         st.placing = true; aim.hidden = bar.hidden = false; btn.hidden = true;
         updatePlace();
       };
-      decide.onclick = () => { const c = adapter.center(), me = st.me; endPlace(); openForm(c, me); };
+      btn.onclick = () => startPlace(null);
+      decide.onclick = () => { const c = adapter.center(), me = st.me, t = target; endPlace(); openForm(c, me, t); };
+      // 確かめに行く候補を受け取る
+      post({ action: 'candidates' }).then(res => {
+        cands = prepare(res.candidates.map(r => ({ ...fromLedger(r), cand: true, memo: r.memo })));
+        setStands(stands);
+      }).catch(() => {});
 
-      function openForm(pos, me) {
+      function openForm(pos, me, cand) {
         const pick = { kind: '無人', items: new Set() };
         // すぐ近くに地図の販売所があれば、同じ所ではないか知らせる（そのまま登録もできる）
-        const dup = stands.map(s => ({ s, d: distM(pos, s) })).filter(x => x.d <= DUP_M).sort((a, b) => a.d - b.d)[0];
+        const dup = stands.filter(s => !s.cand).map(s => ({ s, d: distM(pos, s) })).filter(x => x.d <= DUP_M).sort((a, b) => a.d - b.d)[0];
         const seg = el('div', { class: 'seg' }, ['無人', 'お店の人がいる'].map(k => el('button', { type: 'button', 'aria-pressed': k === pick.kind, onclick: (e) => {
           pick.kind = k; seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === e.currentTarget));
         } }, k)));
@@ -490,17 +530,18 @@ window.StandApp = (() => {
         send.onclick = async () => {
           send.disabled = true; msg.textContent = '登録しています…';
           try {
-            const res = await post({ lat: pos.lat, lng: pos.lng, me: { lat: me.lat, lng: me.lng }, kind: pick.kind, items: [...pick.items], name: name.value.trim() });
-            store.set(MY_ADDS, JSON.stringify([...myAdds(), { id: res.id, at: Date.now() }]));
-            const s = { no: res.id, name: res.name, address: res.address, lat: pos.lat, lng: pos.lng, note: '', source: '自分で登録',
+            const res = await post({ ...(cand ? { action: 'confirm', id: cand.no } : {}), lat: pos.lat, lng: pos.lng, me: { lat: me.lat, lng: me.lng }, kind: pick.kind, items: [...pick.items], name: name.value.trim() });
+            if (cand) cands = cands.filter(x => x.no !== cand.no);
+            else store.set(MY_ADDS, JSON.stringify([...myAdds(), { id: res.id, at: Date.now() }]));
+            const s = { no: res.id, name: res.name, address: res.address, lat: pos.lat, lng: pos.lng, note: '', source: cand ? cand.source + ' → 歩いて確認' : '自分で登録',
               items: [...pick.items], unmanned: pick.kind === '無人', sale: true };
-            setStands([...stands, s]);
+            setStands([...stands.filter(x => !x.cand), s]);
             openDetail(s.no);
             refreshCache();
           } catch (e) { send.disabled = false; msg.textContent = errText(e); }
         };
         showSheet('discover',
-          head('見つけた販売所を登録', 'ピンの場所で登録します'),
+          head(cand ? '候補の販売所を確定' : '見つけた販売所を登録', cand ? `${cand.name} を、ピンの場所で確定します` : 'ピンの場所で登録します'),
           dup ? el('div', { class: 'notice' },
             el('div', {}, `${dup.d < 5 ? 'この場所に' : `約 ${Math.round(dup.d)} m のところに`}「${dup.s.name}」があります。同じ所なら登録しなくて大丈夫です。`),
             el('button', { class: 'btn btn-secondary btn-small', type: 'button', onclick: () => { adapter.flyTo(dup.s); openDetail(dup.s.no); } }, 'その販売所を見る')) : null,
