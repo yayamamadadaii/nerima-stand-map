@@ -111,4 +111,3 @@ html.t-fami .toggle input:checked { background: var(--accent); }
 /* [発見] のボタンとバーもファミコン風の枠に */
 html.t-fami .discover-bar { border: 3px solid var(--line); }
 html.t-fami .chip { border: 2px solid var(--line); }
-html.t-fami .discover-aim .pin-dot { display: none; }

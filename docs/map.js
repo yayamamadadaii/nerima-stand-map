@@ -192,6 +192,24 @@
     center() { const c = map.getCenter(); return { lat: c.lat, lng: c.lng }; },
     areaCenter() { const c = area.getCenter(); return { lat: c.lat, lng: c.lng }; },
     flyTo(s) { map.easeTo({ center: [s.lng, s.lat], zoom: Math.max(map.getZoom(), 16.5 - LZ), duration: 500 }); },
+    onMove(fn) { map.on('move', fn); },
+    // [発見] で登録できる範囲（自分から m メートルの円）。p が null なら消す
+    setRange(p, m) {
+      const data = { type: 'FeatureCollection', features: [] };
+      if (p) {
+        const ring = [];
+        for (let i = 0; i <= 64; i++) {
+          const a = i / 64 * 2 * Math.PI;
+          ring.push([p.lng + m / (111320 * Math.cos(p.lat * Math.PI / 180)) * Math.sin(a), p.lat + m / 110540 * Math.cos(a)]);
+        }
+        data.features.push({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [ring] } });
+      }
+      if (map.getSource('range')) { map.getSource('range').setData(data); return; }
+      const c = colors();
+      map.addSource('range', { type: 'geojson', data });
+      map.addLayer({ id: 'range-fill', type: 'fill', source: 'range', paint: { 'fill-color': c.border, 'fill-opacity': 0.08 } });
+      map.addLayer({ id: 'range-line', type: 'line', source: 'range', paint: { 'line-color': c.border, 'line-width': 2, 'line-dasharray': [2, 2] } });
+    },
     restyle() {
       const c = colors();
       map.setPaintProperty('bg', 'background-color', c.land);

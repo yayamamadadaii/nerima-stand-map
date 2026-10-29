@@ -23,7 +23,10 @@ window.Theme = (() => {
   //   販売所 = 木箱のトマトと同じ赤、収穫体験だけ = 青、販売所で収穫体験もできる = 紫
   const ball = (R, r, s) => ({ w: '#FFFFFF', K: '#4A2E2A', R, r, h: '#FFFFFF', s });
   const BALL = { sale: ball('#F0483A', '#FF9C8A', '#C02A2A'), harvest: ball('#3A7BE0', '#9CC4FF', '#2350A8'), both: ball('#9A5AD8', '#C9A6F2', '#6A34A0') };
-  const SPRITE_PAL = { crate: PAL_KAIRO, field: PAL_KAIRO, ball: BALL.sale };
+  const AIM_PAL = { K: '#4A2E2A', w: '#FFFFFF', W: '#FFFFFF', R: '#F0483A', r: '#FF9C8A', q: '#C02A2A', h: '#FFFFFF', M: '#7A7A80', G: '#2E6B34' };
+  const SPRITE_PAL = { crate: PAL_KAIRO, field: PAL_KAIRO, ball: BALL.sale, aimA: AIM_PAL, aimB: AIM_PAL, aimRing: AIM_PAL };
+  const AIM = 'A';                                   // どちらのピンを使うか（だいきが見比べて選ぶ）
+  const AIM_TIP = { A: [7.5, 18.5], B: [5.5, 17.5] };   // 先の画素の真ん中（ドット単位）
   const SPRITES = {
     // 販売所: 木箱に果物と野菜の盛り合わせ（2026-10-26 だいき選択。カイロソフト風、まわりに白いふち）。色は PAL_KAIRO
     crate: [
@@ -35,6 +38,12 @@ window.Theme = (() => {
     // 収穫体験の農園: 畑から野菜（キャベツ・にんじん・トマト）が生えている（2026-10-26）。色は PAL_KAIRO
     field: [
       '.........wwwwwww........', '........wwKwKwKwwwwww...', '........wKGKLKGKwwKKww..', '........wKGKGKGKwKGGKw..', '...wwwwwwwKGGGK.KGGGKww.', '..wwKKKwwwwKGK..KGGKRKw.', '.wwKlLLKwwwKgK.KGGKRRKw.', '.wKlLLLLKwKOOOKKKKGKKKw.', '.wKLLLLLKKOoOOuKKRKGGKw.', '.wKLLGLLKKOOOOuKRRKGKww.', '.wKLGLGtKKKOOuKKKKKGKw..', '.wwKLLtKeeeeeeeeKGGKKww.', 'wwKeKKKeeeeeeeeeeKKeeKww', 'wKEeEeEeEeEeEeEeEeEeEEKw', 'wKeeeeeeeeeeeeeeeeeeEEKw', 'wKeeeeeeeeeeeeeeeeeEEEKw', 'wwKeEeEeEeEeEeEeEeEEEKww', '.wwKKKeeeeeeeeeeeEKKKww.', '..wwwwKKKKKKKKKKKKwwww..', '.....wwwwwwwwwwwwww.....'],
+    // [発見] で場所を合わせるピン（2026-10-29）: aimA = 逆三角形、aimB = 虫ピン。先の画素が登録する場所。aimRing は先の下に出す輪
+    aimA: ['....wwwwwww....', '...wwKKKKKww...', '..wwKrrRRRKww..', '.wwKrrRRRRRKww.', '.wKrRRWWWRRRKw.', 'wwKrRWWWWWRRKww', 'wKRRWWWWWWWRqKw', 'wKRRWWWWWWWRqKw', 'wKRRWWWWWWWRqKw', 'wwKRRWWWWWRqKww',
+      '.wKRRRWWWRRqKw.', '.wwKRRRRRRqKww.', '..wKRRRRRqqKw..', '..wwKRRRqqKww..', '...wwKRRqKww...', '....wKRqqKw....', '.....wKqKw.....', '.....wwKww.....', '......wKw......', '.......w.......'],
+    aimB: ['...wwwww...', '..wwKKKww..', '.wwKrrRKww.', 'wwKrhrRRKww', 'wKrrrRRRqKw', 'wKrRRRRRqKw', 'wKRRRRRqqKw', 'wwKRRRqqKww', '.wwKKKKKww.', '..wKRRqKw..',
+      '..wKKKKKw..', '...wwKww...', '....wMw....', '....wMw....', '....wMw....', '....wMw....', '....wMw....', '....wKw....', '.....w.....'],
+    aimRing: ['..www..', '.wGGGw.', 'wGw.wGw', 'wG...Gw', 'wGw.wGw', '.wGGGw.', '..www..'],
     ball: ['..wwwwwww..', '.wwKKKKKww.', 'wwKrrrrRKww', 'wKrhrrRRRKw', 'wKrrrRRRRKw', 'wKrrRRRRsKw', 'wKrRRRRssKw', 'wKRRRRsssKw', 'wwKRRsssKww', '.wwKKKKKww.', '..wwwwwww..'],
     hero1: [
       '...HHHHHH...', '..HHHHHHHH..', 'HHHHHHHHHHHH', '..KSSSSSSK..', '..SSKSSKSS..', '..SSSSSSSS..', '...SSSSSS...',
@@ -74,6 +83,14 @@ window.Theme = (() => {
       return w;
     },
     icon: (s) => html(sprite(s.cat === 'harvest' ? 'field' : 'crate', 1.25)),
+    // [発見] の場所合わせのピン。要素の左上が登録する場所になるように、絵をずらして置く
+    aim: () => {
+      const d = document.createElement('span');
+      d.className = 'aim-art';
+      const sc = 2.5, [tx, ty] = AIM_TIP[AIM];
+      d.innerHTML = `<span class="aim-ring">${sprite('aimRing', 3)}</span><span class="aim-pin" style="left:${-tx * sc}px;top:${-ty * sc}px">${sprite('aim' + AIM, sc)}</span>`;
+      return d;
+    },
     // 色の見方（広く見ているとき）に使う球
     ball: (cat) => sprite('ball', 1, BALL[cat]),
     me: () => {

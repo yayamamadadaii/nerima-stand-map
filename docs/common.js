@@ -11,6 +11,10 @@ window.StandApp = (() => {
   const LEDGER_URL = 'https://script.google.com/macros/s/AKfycbzsscGOcvXEoDfv-dSt3CbnIboj226KaF5R_86K3gghaqlrJGb4NHzPeUEfWiG4FvRw/exec';
   const LEDGER_CACHE = 'ledger-v1';      // 前に受け取った台帳。開いたときにすぐ出し、裏で新しい分を受け取って差し替える
   const ADMIN_KEY = 'admin-key';         // [発見] で登録するための鍵。専用リンク（#key=...）を開くと、その端末に覚える
+  const RANGE_M = 50;         // [発見] で登録できるのは自分の位置からこの距離まで（2026-10-29 だいき。台帳側でも確かめる）
+  const DUP_M = 30;           // 登録しようとした場所のこの距離内に販売所があれば「同じ所では？」と知らせる
+  const UNDO_MIN = 10;        // 登録してからこの分数までは、登録した端末から取り消せる
+  const MY_ADDS = 'my-adds';  // この端末で登録した所（[{id, at}]）。取り消しの時間を数える
   const SEASON = { 'ブルーベリー': '6月下旬〜9月', 'ミカン': '冬（日にちは農園に確認）', 'カキ': '10月中旬〜11月ごろ', '野菜': '日程は「とれたてねりま」で案内' };
   const store = { get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
   // 台帳の1行を、地図で使う形にする
@@ -39,6 +43,7 @@ window.StandApp = (() => {
     list: '<path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/>',
     x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
     locate: '<line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/>',
+    pinPlus: '<path d="M19.914 11.105A7.298 7.298 0 0 0 20 10a8 8 0 0 0-16 0c0 4.993 5.539 10.193 7.399 11.799a1 1 0 0 0 1.202 0 32 32 0 0 0 .824-.738"/><circle cx="12" cy="10" r="3"/><path d="M16 18h6"/><path d="M19 15v6"/>',
     compass: '<path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/><circle cx="12" cy="12" r="10"/>',
   };
   function icon(name, cls = '') {
@@ -92,6 +97,7 @@ window.StandApp = (() => {
     const towns = D.towns.filter(t => t.name !== '西大泉町');
     // 専用リンク（#key=...）で開いたら、登録の鍵をこの端末に覚えて、アドレス欄からは消す
     if (location.hash.startsWith('#key=')) { store.set(ADMIN_KEY, decodeURIComponent(location.hash.slice(5))); history.replaceState(null, '', location.pathname + location.search); }
+    const adminKey = store.get(ADMIN_KEY);
     // 販売所: 台帳（前に受け取った分）→ なければ台帳をその場で受け取る → それもだめなら地図データに入っている分
     // cat: sale = 販売所、harvest = 収穫体験だけ、both = 販売所で収穫体験もできる（2026-10-26）
     const prepare = (list) => list
@@ -108,7 +114,8 @@ window.StandApp = (() => {
       selected: null, sheet: null,
       me: null,            // {lat, lng, acc}
       heading: null,       // 度。北=0
-      follow: false, watching: false, nearNo: null
+      follow: false, watching: false, nearNo: null,
+      placing: false       // [発見] で場所を合わせている間
     };
     // 無人販売所と直売所は分けずに「販売所」として全部同じピンで出す。無人か有人かは詳細で分かる（2026-10-26 だいき）
     const visible = () => true;
@@ -203,7 +210,8 @@ window.StandApp = (() => {
         el('div', { class: 'sub' }, [
           inGuide ? '販売所の情報は2025年11月発行の区のガイドより。開いていないこともあります。' : own ? '歩いて見つけて登録した販売所です。開いていないこともあります。' : '',
           s.harvest ? '収穫体験は区の「練馬果樹あるファーム」「ねりまベジかるファーム」（2026年）より。開く日や時間は年によって変わるので、行く前に農園に確かめてください。' : ''].join('')),
-        FORM_URL ? el('a', { class: 'sub', href: formUrl(s), target: '_blank', rel: 'noopener' }, '情報のちがい・掲載の取り下げを知らせる') : null);
+        FORM_URL ? el('a', { class: 'sub', href: formUrl(s), target: '_blank', rel: 'noopener' }, '情報のちがい・掲載の取り下げを知らせる') : null,
+        adminKey ? adminTools(s) : null);
     }
     function openList() {
       const from = st.me && inArea(st.me) ? st.me : adapter.center();
@@ -242,7 +250,7 @@ window.StandApp = (() => {
     function pauseFollow() {
       if (st.follow) { st.follow = false; locBtn.setAttribute('aria-pressed', 'false'); }
       clearTimeout(resumeTimer);
-      if (st.watching) resumeTimer = setTimeout(() => { if (st.me && inArea(st.me) && st.sheet == null) setFollow(true); }, RESUME_MS);
+      if (st.watching) resumeTimer = setTimeout(() => { if (st.me && inArea(st.me) && st.sheet == null && !st.placing) setFollow(true); }, RESUME_MS);
     }
     let walkTimer;
     function updateMe(p) {
@@ -259,7 +267,9 @@ window.StandApp = (() => {
       if (!wasIn && inArea(p) && !st.follow) setFollow(true);
       else if (st.follow && inArea(p)) adapter.follow(p, st.heading);
       checkNear();
+      onMe();
     }
+    let onMe = () => {};   // [発見] で場所を合わせている間、自分が動いたら範囲の円を動かす
     function startWatch() {
       if (!('geolocation' in navigator)) { banner('この端末では現在地が使えません'); return; }
       if (st.watching) { setFollow(true); return; }
@@ -380,27 +390,93 @@ window.StandApp = (() => {
       setStands(JSON.parse(text).stands.map(fromLedger));
     });
 
-    // ---------- [発見]: 見つけた販売所を台帳に登録する（鍵がある端末だけ。2026-10-27） ----------
-    const adminKey = store.get(ADMIN_KEY);
+    // ---------- [発見]: 見つけた販売所を台帳に登録する（鍵がある端末だけ。2026-10-27、2026-10-29 直し） ----------
+    async function post(body) {
+      const res = await (await fetch(LEDGER_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ key: adminKey, ...body }) })).json();
+      if (!res.ok) throw new Error(res.error);
+      return res;
+    }
+    const errText = (e) => ({
+      forbidden: '登録の鍵が合いません。専用リンクを開き直してください。',
+      'too far': `ピンが自分の位置から ${RANGE_M} m より遠いので登録できません。`,
+      expired: `取り消せる時間（${UNDO_MIN}分）を過ぎました。台帳で「表示」の ✓ を外してください。`,
+      'not found': '台帳にこの販売所が見つかりませんでした。'
+    })[e.message] || '送れませんでした。電波のよい所でもう一度試してください。';
+    const refreshCache = () => fetchLedger(15000).then(text => { if (text) store.set(LEDGER_CACHE, text); });
+    // この端末で登録した所。取り消せる時間を過ぎたものは忘れる
+    const myAdds = () => { try { return JSON.parse(store.get(MY_ADDS) || '[]').filter(a => Date.now() - a.at < UNDO_MIN * 60000); } catch (e) { return []; } };
+
+    // 詳細の下に出す、鍵がある端末だけの操作: 登録の取り消し（10分以内）、なくなっていた
+    function adminTools(s) {
+      const msg = el('div', { class: 'sub' });
+      const drop = () => { setStands(stands.filter(x => x.no !== s.no)); closeSheet(); refreshCache(); };
+      // 間違えて押さないよう、1回目は確認の文言に変わり、2回目で送る
+      const twoStep = (label, again, run) => {
+        const b = el('button', { class: 'btn btn-secondary', type: 'button' }, label);
+        let armed = false;
+        b.onclick = async () => {
+          if (!armed) { armed = true; b.textContent = again; return; }
+          b.disabled = true; msg.textContent = '送っています…';
+          try { await run(); } catch (e) { b.disabled = false; armed = false; b.textContent = label; msg.textContent = errText(e); }
+        };
+        return b;
+      };
+      const mine = myAdds().find(a => a.id === s.no);
+      const left = mine ? Math.ceil((UNDO_MIN * 60000 - (Date.now() - mine.at)) / 60000) : 0;
+      return el('div', { class: 'stack admin-tools', style: 'gap:8px' },
+        el('div', { class: 'sub' }, '管理用（鍵のある端末だけに出ます）'),
+        left > 0 ? twoStep(`登録を取り消す（あと${left}分）`, 'もう一度押すと取り消します', async () => {
+          await post({ action: 'cancel', id: s.no });
+          store.set(MY_ADDS, JSON.stringify(myAdds().filter(a => a.id !== s.no)));
+          drop();
+        }) : null,
+        twoStep('なくなっていた（地図から外す）', 'もう一度押すと地図から外します', async () => { await post({ action: 'gone', id: s.no }); drop(); }),
+        msg);
+    }
+
     if (adminKey) {
       const wrap = document.querySelector('.map-wrap');
-      const btn = el('button', { class: 'btn btn-primary discover-btn', type: 'button' }, '発見');
-      const aim = el('div', { class: 'discover-aim', hidden: true, 'aria-hidden': 'true' }, T ? el('span', { class: 'aim-art' }) : el('span', { class: 'aim-dot' }));
-      if (T) aim.firstChild.innerHTML = T.pin({ cat: 'sale' }).innerHTML;
+      // 右下のボタンの列のいちばん上に置く
+      const btn = el('button', { class: 'btn btn-secondary btn-round', type: 'button', 'aria-label': '見つけた販売所を登録' }, icon('pinPlus'));
+      $('locBtn').parentElement.prepend(btn);
+      // 場所合わせのピン: 要素の左上が地図の真ん中で、そこが登録する場所
+      const aim = el('div', { class: 'discover-aim', hidden: true, 'aria-hidden': 'true' }, T ? T.aim() : el('span', { class: 'aim-dot' }));
+      const status = el('div', { class: 'sub discover-status' });
+      const decide = el('button', { class: 'btn btn-primary', type: 'button' }, 'ここで決定');
       const bar = el('div', { class: 'discover-bar', hidden: true },
-        el('div', { class: 'sub' }, '地図を動かして、ピンを販売所の場所に合わせてください'),
+        el('div', {}, '地図にない販売所を登録できます。地図を動かして、ピンの先を販売所に合わせてください。'),
+        status,
         el('div', { class: 'discover-actions' },
           el('button', { class: 'btn btn-secondary', type: 'button', onclick: () => endPlace() }, 'やめる'),
-          el('button', { class: 'btn btn-primary', type: 'button', onclick: () => { const c = adapter.center(); endPlace(); openForm(c); } }, 'ここで決定')));
-      wrap.append(btn, aim, bar);
-      const endPlace = () => { aim.hidden = bar.hidden = true; btn.hidden = false; };
+          decide));
+      wrap.append(aim, bar);
+      // 自分から RANGE_M 以内のときだけ「ここで決定」を押せる
+      function updatePlace() {
+        if (!st.placing) return;
+        adapter.setRange(st.me, RANGE_M);
+        if (!st.me) { decide.disabled = true; status.textContent = '現在地を探しています…（現在地が分かると登録できます）'; return; }
+        const d = distM(st.me, adapter.center());
+        decide.disabled = d > RANGE_M;
+        status.textContent = d <= RANGE_M ? `自分から ${Math.round(d)} m（円の中なら登録できます）`
+          : `ピンが自分から ${fmtDist(d)} 離れています。販売所の ${RANGE_M} m 以内まで近づいてください`;
+      }
+      adapter.onMove(updatePlace);
+      onMe = updatePlace;
+      const endPlace = () => { st.placing = false; adapter.setRange(null); aim.hidden = bar.hidden = true; btn.hidden = false; };
       btn.onclick = () => {
         closeSheet(); pauseFollow();
+        if (!st.watching) startWatch();
         if (st.me) adapter.flyTo(st.me);
-        aim.hidden = bar.hidden = false; btn.hidden = true;
+        st.placing = true; aim.hidden = bar.hidden = false; btn.hidden = true;
+        updatePlace();
       };
-      function openForm(pos) {
+      decide.onclick = () => { const c = adapter.center(), me = st.me; endPlace(); openForm(c, me); };
+
+      function openForm(pos, me) {
         const pick = { kind: '無人', items: new Set() };
+        // すぐ近くに地図の販売所があれば、同じ所ではないか知らせる（そのまま登録もできる）
+        const dup = stands.map(s => ({ s, d: distM(pos, s) })).filter(x => x.d <= DUP_M).sort((a, b) => a.d - b.d)[0];
         const seg = el('div', { class: 'seg' }, ['無人', 'お店の人がいる'].map(k => el('button', { type: 'button', 'aria-pressed': k === pick.kind, onclick: (e) => {
           pick.kind = k; seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === e.currentTarget));
         } }, k)));
@@ -414,21 +490,20 @@ window.StandApp = (() => {
         send.onclick = async () => {
           send.disabled = true; msg.textContent = '登録しています…';
           try {
-            const res = await (await fetch(LEDGER_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-              body: JSON.stringify({ key: adminKey, lat: pos.lat, lng: pos.lng, kind: pick.kind, items: [...pick.items], name: name.value.trim() }) })).json();
-            if (!res.ok) throw new Error(res.error);
+            const res = await post({ lat: pos.lat, lng: pos.lng, me: { lat: me.lat, lng: me.lng }, kind: pick.kind, items: [...pick.items], name: name.value.trim() });
+            store.set(MY_ADDS, JSON.stringify([...myAdds(), { id: res.id, at: Date.now() }]));
             const s = { no: res.id, name: res.name, address: res.address, lat: pos.lat, lng: pos.lng, note: '', source: '自分で登録',
               items: [...pick.items], unmanned: pick.kind === '無人', sale: true };
             setStands([...stands, s]);
             openDetail(s.no);
-            fetchLedger(15000).then(text => { if (text) store.set(LEDGER_CACHE, text); });
-          } catch (e) {
-            send.disabled = false;
-            msg.textContent = e.message === 'forbidden' ? '登録の鍵が合いません。専用リンクを開き直してください。' : '登録できませんでした。電波のよい所でもう一度試してください。';
-          }
+            refreshCache();
+          } catch (e) { send.disabled = false; msg.textContent = errText(e); }
         };
         showSheet('discover',
           head('見つけた販売所を登録', 'ピンの場所で登録します'),
+          dup ? el('div', { class: 'notice' },
+            el('div', {}, `${dup.d < 5 ? 'この場所に' : `約 ${Math.round(dup.d)} m のところに`}「${dup.s.name}」があります。同じ所なら登録しなくて大丈夫です。`),
+            el('button', { class: 'btn btn-secondary btn-small', type: 'button', onclick: () => { adapter.flyTo(dup.s); openDetail(dup.s.no); } }, 'その販売所を見る')) : null,
           el('div', { class: 'stack', style: 'gap:4px' }, el('div', { class: 'sub' }, '種類'), seg),
           el('div', { class: 'stack', style: 'gap:4px' }, el('div', { class: 'sub' }, '売っているもの（いくつでも。選ばなくてもよい）'), chips),
           el('div', { class: 'stack', style: 'gap:4px' }, el('div', { class: 'sub' }, '名前（なくてもよい）'), name),
