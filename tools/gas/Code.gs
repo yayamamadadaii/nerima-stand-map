@@ -1,7 +1,7 @@
 // 道のマルシェMAP 台帳（Googleスプレッドシート）の Apps Script
 // - doGet: 地図が読む。「表示」に ✓ がある行の、見せてよい列だけを JSON で返す（自分用メモは出さない）
 // - doPost: [発見] ボタンからの登録・取り消し・「なくなっていた」。鍵（スクリプト プロパティ ADMIN_KEY）が合うときだけ
-// 置き方: スプレッドシートの「拡張機能 > Apps Script」にこのファイルの中身を貼る。手順は CLAUDE.md の「台帳」
+// 置き方: このフォルダで clasp push -f → clasp update-deployment（手順は CLAUDE.md の「台帳」）
 
 const SHEET = '販売所';
 const COL = { id: 0, show: 1, name: 2, address: 3, lat: 4, lng: 5, kind: 6, items: 7, harvest: 8, note: 9, status: 10, source: 11, date: 12, memo: 13 };
