@@ -17,10 +17,10 @@ window.Theme = (() => {
   const PAL_KAIRO = {
     K: '#4A2E2A', w: '#FFFFFF', W: '#FFFFFF', R: '#F0483A', r: '#FF9C8A', q: '#C02A2A', O: '#FF9A2E', Y: '#FFD43A', G: '#5CC84A', g: '#2E8A3A',
     L: '#A8E06A', l: '#D8F5A8', t: '#78B840', P: '#8A4AC8', N: '#D08A4A', n: '#F0B878', D: '#9A5A30',
-    o: '#FFD08A', u: '#D06A10', E: '#7A4A28', e: '#A86A3A'
+    o: '#FFD08A', u: '#D06A10', E: '#7A4A28', e: '#A86A3A', v: '#C8D8B0', p: '#B888E8', m: '#5A2E7A'
   };
   // 広く見たときのピンの球: ハイライトと影つき。色で種類を分ける（2026-10-26 だいき指示）
-  //   販売所 = 木箱のトマトと同じ赤、収穫体験だけ = 青、販売所で収穫体験もできる = 紫
+  //   販売所 = 前の木箱のトマトと同じ赤、収穫体験だけ = 青、販売所で収穫体験もできる = 紫
   const ball = (R, r, s) => ({ w: '#FFFFFF', K: '#4A2E2A', R, r, h: '#FFFFFF', s });
   const BALL = { sale: ball('#F0483A', '#FF9C8A', '#C02A2A'), harvest: ball('#3A7BE0', '#9CC4FF', '#2350A8'), both: ball('#9A5AD8', '#C9A6F2', '#6A34A0') };
   const AIM_PAL = { K: '#4A2E2A', w: '#FFFFFF', W: '#FFFFFF', R: '#F0483A', r: '#FF9C8A', q: '#C02A2A', h: '#FFFFFF', M: '#7A7A80', G: '#2E6B34' };
@@ -29,13 +29,13 @@ window.Theme = (() => {
   const AIM_LIFT = 14;                               // ピンを場所の輪から少し浮かせる（px。輪と絵が重ならないように。だいき指示）
   const AIM_TIP = { A: [7.5, 18.5], B: [5.5, 17.5] };   // 先の画素の真ん中（ドット単位）
   const SPRITES = {
-    // 販売所: 木箱に果物と野菜の盛り合わせ（2026-10-26 だいき選択。カイロソフト風、まわりに白いふち）。色は PAL_KAIRO
+    // 販売所: 編みかごに果物と野菜（ぶどう2色・大根・りんご・柿・なす）。だいきが Gemini で作った絵に寄せた（2026-10-29。前は木箱）。カイロソフト風、まわりに白いふち。色は PAL_KAIRO
     crate: [
-      '..www...wwww..wwww......', '.wwKww.wwKKw.wwKKww.....', '.wKLKwwwKGKw.wKYYKw..www', '.wKLGKwKGGKwwwKYYKwwwwGw', '.wwKGGKKGGKwwKYYYKwKKgww',
-      '..wKGGKKGGKwwKYYYKKPPPKw', '..wKGKKKGGKKgGKYYKPPPPKw', '..wKKlLLKKrrGRRKYKPPPPKw', '.wwKlLLLLKrWRRRKKPPPPKww', '.wKlLLLLKrRRRRRRKPKgKKw.',
-      '.wKLLLGLKRRRRRRqKKOOOKww', '.wKLLGLGLKRRRRqKKOOOOOKw', '.wwKLLLLtKRRRqqKKOOOOOKw', 'wwwKKLLtKKKKKKKwwKOOOKww', 'wKKKKKKKKKKKKKKKKKKKKKKw',
-      'wKnnnnnnnnnnnnnnnnnnnnKw', 'wKNNNNNDNNNNDNNNNDNNNNKw', 'wKDDDDDDDDDDDDDDDDDDDDKw', 'wKNNNNNDNNNNDNNNNDNNNNKw', 'wKKKKKKKKKKKKKKKKKKKKKKw',
-      'wwwwwwwwwwwwwwwwwwwwwwww'],
+      '............wwKwwKwwKww...', '............wKGKKGKKGKw...', '............wKGgKLKgGKw...', '......www...wwKGgGgGKww...', '....wwwKww..wwKGGgGKww....',
+      '..wwwKKPKwwwwKvvgGKwKwww..', '..wKKPpPmKKwwKWWWvKKGKKw..', '.wwKpPmPpPKwwKWWvvKLlLKw..', '.wKPmPpPmPpKKWWWvKlLGLKww.', '.wKPpPmPpPmmKvvvvKGLlLgKww',
+      '.wKPmPpPmPpmKWWvvKlLGmPPKw', '.wKPpPmPpPmKWWWvKLGLlmmmKw', '.wwKqqEqqPmKWWWugulLGmmmKw', '.wwKRrrRRqmKvuuggguGGmmmKw', '.wKRRRRRRRqWWuOOOOOGggGmKw',
+      '.wKRRRRRRRqWWuOOOOGLllLKww', 'wwKRRRRRRRqWWuOOOOGLLLLKww', 'wKKKKKKKKKKKKKKKKKKKKKKKKw', 'wKnnnnnnnnnnnnnnnnnnnnnnKw', 'wwKDNNDDNNDDNNDDNNDDNNDKww',
+      '.wKNDDNNDDNNDDNNDDNNDDNKw.', '.wwKNNDDNNDDNNDDNNDDNNKww.', '..wKKKKKKKKKKKKKKKKKKKKw..', '..wwwwwwwwwwwwwwwwwwwwww..'],
     // 収穫体験の農園: 畑から野菜（キャベツ・にんじん・トマト）が生えている（2026-10-26）。色は PAL_KAIRO
     field: [
       '.........wwwwwww........', '........wwKwKwKwwwwww...', '........wKGKLKGKwwKKww..', '........wKGKGKGKwKGGKw..', '...wwwwwwwKGGGK.KGGGKww.', '..wwKKKwwwwKGK..KGGKRKw.', '.wwKlLLKwwwKgK.KGGKRRKw.', '.wKlLLLLKwKOOOKKKKGKKKw.', '.wKLLLLLKKOoOOuKKRKGGKw.', '.wKLLGLLKKOOOOuKRRKGKww.', '.wKLGLGtKKKOOuKKKKKGKw..', '.wwKLLtKeeeeeeeeKGGKKww.', 'wwKeKKKeeeeeeeeeeKKeeKww', 'wKEeEeEeEeEeEeEeEeEeEEKw', 'wKeeeeeeeeeeeeeeeeeeEEKw', 'wKeeeeeeeeeeeeeeeeeEEEKw', 'wwKeEeEeEeEeEeEeEeEEEKww', '.wwKKKeeeeeeeeeeeEKKKww.', '..wwwwKKKKKKKKKKKKwwww..', '.....wwwwwwwwwwwwww.....'],
@@ -75,7 +75,7 @@ window.Theme = (() => {
     name,
     // ピン: 拡大しているときはドット絵、広く見ているとき（html.far）は色違いの丸（themes.css で切り替え）
     // 種類（s.cat）: sale = 販売所、harvest = 収穫体験だけ、both = 販売所で収穫体験もできる
-    // 拡大: 販売する所は木箱、収穫体験だけの所は畑の絵（色の球は付けない。だいき指示 2026-10-26）
+    // 拡大: 販売する所はかご、収穫体験だけの所は畑の絵（色の球は付けない。だいき指示 2026-10-26）
     pin: (s) => {
       const w = document.createElement('span');
       w.className = 'pin-art';
