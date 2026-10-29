@@ -107,7 +107,7 @@ window.Theme = (() => {
     me: () => {
       const d = document.createElement('div');
       d.className = 'me me-px';
-      d.innerHTML = `<div class="me-cone" hidden></div><div class="hero">${sprite('cat1', 1.5)}${sprite('cat2', 1.5)}</div>`;
+      d.innerHTML = `<div class="me-cone" hidden></div><div class="hero">${sprite('cat1', 2)}${sprite('cat2', 2)}</div>`;
       return d;
     },
     nearEyebrow: copy.near,
