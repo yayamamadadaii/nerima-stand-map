@@ -25,7 +25,8 @@ window.Theme = (() => {
   const BALL = { sale: ball('#F0483A', '#FF9C8A', '#C02A2A'), harvest: ball('#3A7BE0', '#9CC4FF', '#2350A8'), both: ball('#9A5AD8', '#C9A6F2', '#6A34A0') };
   const AIM_PAL = { K: '#4A2E2A', w: '#FFFFFF', W: '#FFFFFF', R: '#F0483A', r: '#FF9C8A', q: '#C02A2A', h: '#FFFFFF', M: '#7A7A80', G: '#2E6B34' };
   const SPRITE_PAL = { crate: PAL_KAIRO, field: PAL_KAIRO, ball: BALL.sale, aimA: AIM_PAL, aimB: AIM_PAL, aimRing: AIM_PAL };
-  const AIM = 'A';                                   // どちらのピンを使うか（だいきが見比べて選ぶ）
+  const AIM = 'A';                                   // 逆三角形（2026-10-29 だいき選択。虫ピンは B）
+  const AIM_LIFT = 14;                               // ピンを場所の輪から少し浮かせる（px。輪と絵が重ならないように。だいき指示）
   const AIM_TIP = { A: [7.5, 18.5], B: [5.5, 17.5] };   // 先の画素の真ん中（ドット単位）
   const SPRITES = {
     // 販売所: 木箱に果物と野菜の盛り合わせ（2026-10-26 だいき選択。カイロソフト風、まわりに白いふち）。色は PAL_KAIRO
@@ -83,12 +84,12 @@ window.Theme = (() => {
       return w;
     },
     icon: (s) => html(sprite(s.cat === 'harvest' ? 'field' : 'crate', 1.25)),
-    // [発見] の場所合わせのピン。要素の左上が登録する場所になるように、絵をずらして置く
+    // [発見] の場所合わせのピン。要素の左上が登録する場所（輪の真ん中）。ピンの先はその少し上に浮かせる
     aim: () => {
       const d = document.createElement('span');
       d.className = 'aim-art';
       const sc = 2.5, [tx, ty] = AIM_TIP[AIM];
-      d.innerHTML = `<span class="aim-ring">${sprite('aimRing', 3)}</span><span class="aim-pin" style="left:${-tx * sc}px;top:${-ty * sc}px">${sprite('aim' + AIM, sc)}</span>`;
+      d.innerHTML = `<span class="aim-ring">${sprite('aimRing', 3)}</span><span class="aim-pin" style="left:${-tx * sc}px;top:${-ty * sc - AIM_LIFT}px">${sprite('aim' + AIM, sc)}</span>`;
       return d;
     },
     // 色の見方（広く見ているとき）に使う球
